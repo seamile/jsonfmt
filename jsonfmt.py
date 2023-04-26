@@ -5,6 +5,8 @@ import json
 from sys import stdin
 from argparse import ArgumentParser
 
+__version__ = '0.1'
+
 
 def print_err(msg):
     print(f'\033[0;31m{msg}\033[0m')
@@ -59,13 +61,15 @@ def get_jsonobj(obj, jsonpath: str):
 def main():
     parser = ArgumentParser('jsonfmt')
     parser.add_argument('-c', dest='compression', action='store_true',
-                        help='compression the json files.')
+                        help='compression the json object.')
     parser.add_argument('-O', dest='overwrite', action='store_true',
                         help='overwrite to the json file.')
     parser.add_argument('-p', dest='jsonpath', type=str,
                         help='the json path, Use `/` to separate different levels.')
     parser.add_argument(dest='json_files', nargs='*',
                         help='the json files that will be processed')
+    parser.add_argument('-v', dest='version', action='version', version=__version__,
+                        help="show isearch's version")
     args = parser.parse_args()
 
     if args.json_files:
