@@ -36,9 +36,12 @@ $ jsonfmt [-h] [-c] [-O] [-p JSONPATH] [json_files ...]
 
 1. Pretty print from json file.
 
-    ```json
-    $ jsonfmt example.json
+     ```shell
+     $ jsonfmt example.json
+     ```
 
+     ouput:
+     ```json
      [
           {
                "attr": "original",
@@ -64,21 +67,27 @@ $ jsonfmt [-h] [-c] [-O] [-p JSONPATH] [json_files ...]
 
 2. Compress the JSON string from stdin.
 
-     ```json
+     ```shell
      $ echo '{
           "name": "hello",
           "age": 21,
           "item": ["pen", "ruler", "phone"]
      }' | jsonfmt -c
+     ```
 
+     ouput:
+     ```json
      {"age":21,"item":["pen","ruler","phone"],"name":"hello"}
      ```
 
 3. Use json path.
 
-     ```json
+     ```shell
      $ jsonfmt -p '2/tags' example.json
+     ```
 
+     ouput:
+     ```json
      [
           "オリジナル",
           "がんばれ同期ちゃん"

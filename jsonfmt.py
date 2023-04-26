@@ -5,7 +5,7 @@ import json
 from sys import stdin
 from argparse import ArgumentParser
 
-__version__ = '0.1'
+__version__ = '0.1.1'
 
 
 def print_err(msg):
