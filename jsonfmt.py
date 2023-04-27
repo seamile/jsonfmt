@@ -4,11 +4,12 @@
 import json
 from sys import stdin
 from argparse import ArgumentParser
+from typing import Any, Optional, IO
 
 __version__ = '0.1.1'
 
 
-def print_err(msg):
+def print_err(msg: str):
     print(f'\033[0;31m{msg}\033[0m')
 
 
@@ -16,7 +17,7 @@ class JSONPathError(Exception):
     pass
 
 
-def output(json_obj, output_fp=None, compression=False):
+def output(json_obj: Any, output_fp: Optional[IO] = None, compression: bool = False):
     if output_fp is None:
         if compression:
             j_str = json.dumps(json_obj, ensure_ascii=False,
@@ -36,15 +37,15 @@ def output(json_obj, output_fp=None, compression=False):
                       sort_keys=True, indent=4)
 
 
-def parse_jsonpath(jsonpath: str):
+def parse_jsonpath(jsonpath: str) -> list[str | int]:
     keys = jsonpath.split('/')
     for i, k in enumerate(keys):
         if k.isdecimal():
             keys[i] = int(k)  # type: ignore
-    return keys
+    return keys  # type: ignore
 
 
-def get_jsonobj(obj, jsonpath: str):
+def get_jsonobj(obj: Any, jsonpath: str) -> Any:
     if not jsonpath:
         return obj
     else:
