@@ -75,15 +75,15 @@ def jsonpath_match(json_obj: Any, jsonpath: str) -> Any:
 def main():
     parser = ArgumentParser('jsonfmt')
     parser.add_argument('-c', dest='compression', action='store_true',
-                        help='compression the json object.')
+                        help='compression the json object in the files or stdin.')
     parser.add_argument('-O', dest='overwrite', action='store_true',
-                        help='overwrite to the json file.')
+                        help='overwrite the formated json object into the json file.')
     parser.add_argument('-p', dest='jsonpath', type=str,
-                        help='the json path, Use `/` to separate different levels.')
+                        help='output part of json object via jsonpath.')
     parser.add_argument(dest='json_files', nargs='*',
                         help='the json files that will be processed')
     parser.add_argument('-v', dest='version', action='version', version=__version__,
-                        help="show isearch's version")
+                        help="show the version.")
     args = parser.parse_args()
 
     if args.json_files:

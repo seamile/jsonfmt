@@ -1,12 +1,12 @@
 # JSON Formator
 
-`jsonfmt` is a JSON object formatting tool.
+**jsonfmt** is a json object formatting tool.
 
 ## Features
 
-1. Print the JSON object in pretty format from files or stdin.
-2. Compress the JSON object into a single line without spaces.
-3. Output part of a large JSON object via jsonpath.
+1. Print the json object in pretty format from files or stdin.
+2. Compress the json object into a single line without spaces.
+3. Output part of a large json object via jsonpath.
 
 ## Install
 
@@ -26,13 +26,16 @@ $ jsonfmt [-h] [-c] [-O] [-p JSONPATH] [json_files ...]
 
 - options:
 
-     - `-h, --help `:  show this help message and exit
-     - `-c`:  compression the json object in the files or stdin.
-     - `-O`:  overwrite the formated json object into the json file.
-     - `-p JSONPATH`:  output part of json object via the json path (Use `/` to separate different levels).
+     - `-h, --help`: show this help message and exit.
+     - `-c`: compression the json object in the files or stdin.
+     - `-O`: overwrite to the json file.
+     - `-p JSONPATH`: output part of json object via jsonpath.
+     - `-v`: show the version.
 
 
 ## Example
+
+In the file example.json there is a compressed json object.
 
 1. Pretty print from json file.
 
@@ -42,54 +45,105 @@ $ jsonfmt [-h] [-c] [-O] [-p JSONPATH] [json_files ...]
 
      ouput:
      ```json
-     [
-          {
-               "attr": "original",
-               "banner": "https://img.example.net/u/9172583_50.png",
-               "date": "2023年04月23日 01:29",
-               "height": 2585,
-               "id": 107429,
-               "istyle": "0",
-               "itype": {
-                    "a": false,
-                    "b": false,
-                    "d": false,
-                    "f": false,
-                    "l": false,
-                    "y": false
+     {
+          "age": 23,
+          "gender": "male",
+          "history": [
+               {
+                    "action": "eat",
+                    "date": "2021-03-02",
+                    "items": [
+                         {
+                              "bar": 222,
+                              "foo": 111
+                         },
+                         {
+                              "bar": -222,
+                              "foo": -111
+                         }
+                    ]
                },
-               "name": "ももこ",
-               ...
-          },
-          ...
-     ]
+               {
+                    "action": "drink",
+                    "date": "2022-11-01",
+                    "items": [
+                         {
+                              "bar": 444,
+                              "foo": 333
+                         },
+                         {
+                              "bar": -444,
+                              "foo": -333
+                         }
+                    ]
+               },
+               {
+                    "action": "walk",
+                    "date": "2023-04-27",
+                    "items": [
+                         {
+                              "bar": 666,
+                              "foo": 555
+                         },
+                         {
+                              "bar": -666,
+                              "foo": -555
+                         }
+                    ]
+               }
+          ],
+          "name": "bob"
+     }
     ```
 
-2. Compress the JSON string from stdin.
+     Of course, you can use the `-O` parameter to overwrite the file with the result:
+
+     ```shell
+     $ jsonfmt -O example.json
+     ```
+
+2. Compress the json string from stdin.
 
      ```shell
      $ echo '{
-          "name": "hello",
+          "name": "alex",
           "age": 21,
-          "item": ["pen", "ruler", "phone"]
+          "items": ["pen", "ruler", "phone"]
      }' | jsonfmt -c
      ```
 
      ouput:
      ```json
-     {"age":21,"item":["pen","ruler","phone"],"name":"hello"}
+     {"age":21,"items":["pen","ruler","phone"],"name":"alex"}
      ```
 
-3. Use json path.
+3. Use jsonpath to match part of a json object.
 
-     ```shell
-     $ jsonfmt -p '2/tags' example.json
-     ```
+     **jsonfmt** uses a simplified jsonpath syntax.
 
-     ouput:
-     ```json
-     [
-          "オリジナル",
-          "がんばれ同期ちゃん"
-     ]
-     ```
+     - It matches json objects starting from the root node.
+     - You can use keys to match dictionaries and indexes to match lists, and use `/` to separate different levels.
+
+          ```shell
+          $ jsonfmt -p 'history/0/date' example.json
+          ```
+
+          ouput:
+          ```json
+          "2021-03-02"
+          ```
+
+     - If you want to match all items in a list, just use `*` to match.
+
+          ```shell
+          $ jsonfmt -p 'history/*/action' example.json
+          ```
+
+          ouput:
+          ```json
+          [
+               "eat",
+               "drink",
+               "walk"
+          ]
+          ```
