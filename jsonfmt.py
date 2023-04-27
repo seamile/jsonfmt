@@ -78,7 +78,7 @@ def main():
                         help='compression the json object in the files or stdin.')
     parser.add_argument('-O', dest='overwrite', action='store_true',
                         help='overwrite the formated json object into the json file.')
-    parser.add_argument('-p', dest='jsonpath', type=str,
+    parser.add_argument('-p', dest='jsonpath', type=str, default='',
                         help='output part of json object via jsonpath.')
     parser.add_argument(dest='json_files', nargs='*',
                         help='the json files that will be processed')
