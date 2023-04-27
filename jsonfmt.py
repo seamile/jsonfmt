@@ -18,6 +18,7 @@ class JSONPathError(Exception):
 
 
 def output(json_obj: Any, output_fp: Optional[IO] = None, compression: bool = False):
+    '''output formated json to file or stdout'''
     if output_fp is None:
         if compression:
             j_str = json.dumps(json_obj, ensure_ascii=False,
@@ -38,25 +39,37 @@ def output(json_obj: Any, output_fp: Optional[IO] = None, compression: bool = Fa
 
 
 def parse_jsonpath(jsonpath: str) -> list[str | int]:
-    keys = jsonpath.split('/')
-    for i, k in enumerate(keys):
-        if k.isdecimal():
-            keys[i] = int(k)  # type: ignore
-    return keys  # type: ignore
-
-
-def get_jsonobj(obj: Any, jsonpath: str) -> Any:
+    jsonpath = jsonpath.strip().strip('/')
     if not jsonpath:
-        return obj
+        return []
     else:
-        keys = parse_jsonpath(jsonpath)
-        for k in keys:
-            try:
-                obj = obj[k]
-            except (IndexError, KeyError, TypeError):
-                raise JSONPathError(f'Invalid path node `{k}`')
+        components = jsonpath.split('/')
+        for i, c in enumerate(components):
+            if c.isdecimal():
+                components[i] = int(c)  # type: ignore
+        return components  # type: ignore
 
-        return obj
+
+def get_element_by_components(json_obj: Any, jpath_components: list[str | int]) -> Any:
+    for i, c in enumerate(jpath_components):
+        if c == '*' and isinstance(json_obj, list):
+            return [get_element_by_components(sub_obj, jpath_components[i + 1:])
+                    for sub_obj in json_obj]
+        else:
+            try:
+                json_obj = json_obj[c]
+            except (IndexError, KeyError, TypeError):
+                raise JSONPathError(f'Invalid path node `{c}`')
+
+    return json_obj
+
+
+def jsonpath_match(json_obj: Any, jsonpath: str) -> Any:
+    jpath_components = parse_jsonpath(jsonpath)
+    if not jpath_components:
+        return json_obj
+    else:
+        return get_element_by_components(json_obj, jpath_components)
 
 
 def main():
@@ -80,7 +93,7 @@ def main():
                 with open(j_file, 'r+') as fp:
                     try:
                         j_obj = json.load(fp)
-                        j_obj = get_jsonobj(j_obj, args.jsonpath)
+                        matched_obj = jsonpath_match(j_obj, args.jsonpath)
                     except json.decoder.JSONDecodeError:
                         print_err(f"File `{j_file}` does not contains JSON string")
                         continue
@@ -88,15 +101,15 @@ def main():
                         print_err(f'{e}')
                         continue
                     output_fp = fp if args.overwrite else None
-                    output(j_obj, output_fp, args.compression)
+                    output(matched_obj, output_fp, args.compression)
 
             except FileNotFoundError:
                 print_err(f'No such file `{j_file}`')
     else:
         # get json from stdin
         try:
-            j_obj = json.load(stdin)  # type: ignore
-            j_obj = get_jsonobj(j_obj, args.jsonpath)
+            j_obj = json.load(stdin)
+            matched_obj = jsonpath_match(j_obj, args.jsonpath)
         except json.decoder.JSONDecodeError:
             print_err('Wrong JSON format')
             exit(1)
@@ -104,7 +117,7 @@ def main():
             print_err(f'{e}')
             exit(2)
         else:
-            output(j_obj, None, args.compression)
+            output(matched_obj, None, args.compression)
 
 
 if __name__ == "__main__":
