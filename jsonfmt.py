@@ -2,11 +2,11 @@
 '''JSON Format Tool'''
 
 import json
-from sys import stdin
+from sys import stdin, stdout
 from argparse import ArgumentParser
-from typing import Any, Optional, IO
+from typing import Any, IO
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
 
 def print_err(msg: str):
@@ -17,25 +17,20 @@ class JSONPathError(Exception):
     pass
 
 
-def output(json_obj: Any, output_fp: Optional[IO] = None, compression: bool = False):
+def output(json_obj: Any, compression: bool, escape: bool, indent: int,
+           output_fp: IO = stdout):
     '''output formated json to file or stdout'''
-    if output_fp is None:
-        if compression:
-            j_str = json.dumps(json_obj, ensure_ascii=False,
-                               sort_keys=True, separators=(',', ':'))
-        else:
-            j_str = json.dumps(json_obj, ensure_ascii=False,
-                               sort_keys=True, indent=4)
-        print(j_str)
+    output_fp.seek(0)
+    output_fp.truncate()
+    if compression:
+        json.dump(json_obj, output_fp, ensure_ascii=escape,
+                  sort_keys=True, separators=(',', ':'))
     else:
-        output_fp.seek(0)
-        output_fp.truncate()
-        if compression:
-            json.dump(json_obj, output_fp, ensure_ascii=False,
-                      sort_keys=True, separators=(',', ':'))
-        else:
-            json.dump(json_obj, output_fp, ensure_ascii=False,
-                      sort_keys=True, indent=4)
+        json.dump(json_obj, output_fp, ensure_ascii=escape,
+                  sort_keys=True, indent=indent)
+
+    # append a blank line at the end of `fp``
+    output_fp.write('\n')
 
 
 def parse_jsonpath(jsonpath: str) -> list[str | int]:
@@ -76,6 +71,10 @@ def main():
     parser = ArgumentParser('jsonfmt')
     parser.add_argument('-c', dest='compression', action='store_true',
                         help='compression the json object in the files or stdin.')
+    parser.add_argument('-e', dest='escape', action='store_true',
+                        help='escape non-ASCII characters')
+    parser.add_argument('-i', dest='indent', type=int, default=4,
+                        help='number of spaces to use for indentation. (default: %(default)s)')
     parser.add_argument('-O', dest='overwrite', action='store_true',
                         help='overwrite the formated json object into the json file.')
     parser.add_argument('-p', dest='jsonpath', type=str, default='',
@@ -95,13 +94,14 @@ def main():
                         j_obj = json.load(fp)
                         matched_obj = jsonpath_match(j_obj, args.jsonpath)
                     except json.decoder.JSONDecodeError:
-                        print_err(f"File `{j_file}` does not contains JSON string")
+                        print_err(f"no json object found from file `{j_file}`")
                         continue
                     except JSONPathError as e:
                         print_err(f'{e}')
                         continue
-                    output_fp = fp if args.overwrite else None
-                    output(matched_obj, output_fp, args.compression)
+                    output_fp = fp if args.overwrite else stdout
+                    output(matched_obj, args.compression, args.escape,
+                           args.indent, output_fp)
 
             except FileNotFoundError:
                 print_err(f'No such file `{j_file}`')
@@ -111,13 +111,13 @@ def main():
             j_obj = json.load(stdin)
             matched_obj = jsonpath_match(j_obj, args.jsonpath)
         except json.decoder.JSONDecodeError:
-            print_err('Wrong JSON format')
+            print_err("no json object found from `stdin`")
             exit(1)
         except JSONPathError as e:
             print_err(f'{e}')
             exit(2)
         else:
-            output(matched_obj, None, args.compression)
+            output(matched_obj, args.compression, args.escape, args.indent)
 
 
 if __name__ == "__main__":
