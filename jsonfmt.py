@@ -2,7 +2,7 @@
 '''JSON Format Tool'''
 
 import json
-from sys import stdin, stdout
+from sys import stdin, stdout, stderr
 from argparse import ArgumentParser
 from typing import Any, IO
 
@@ -10,7 +10,7 @@ __version__ = '0.1.2'
 
 
 def print_err(msg: str):
-    print(f'\033[0;31m{msg}\033[0m')
+    print(f'\033[0;31m{msg}\033[0m', file=stderr)
 
 
 class JSONPathError(Exception):
