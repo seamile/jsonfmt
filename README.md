@@ -1,5 +1,9 @@
 # JSON Formator
 
+![PyPI - Downloads](https://img.shields.io/pypi/dm/jsonfmt?label=Install&color=green)
+![PyPI](https://img.shields.io/pypi/v/jsonfmt?color=9cf)
+
+
 **jsonfmt** is a json object formatting tool.
 
 ## Features
