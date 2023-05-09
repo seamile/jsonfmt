@@ -20,8 +20,9 @@ class JSONPathError(Exception):
 def output(json_obj: Any, compression: bool, escape: bool, indent: int,
            output_fp: IO = stdout):
     '''output formated json to file or stdout'''
-    output_fp.seek(0)
-    output_fp.truncate()
+    if output_fp.fileno() > 2:
+        output_fp.seek(0)
+        output_fp.truncate()
     if compression:
         json.dump(json_obj, output_fp, ensure_ascii=escape,
                   sort_keys=True, separators=(',', ':'))
