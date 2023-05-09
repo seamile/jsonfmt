@@ -4,7 +4,7 @@
 import json
 from sys import stdin, stdout, stderr
 from argparse import ArgumentParser
-from typing import Any, IO
+from typing import Any, List, IO, Union
 
 __version__ = '0.1.2'
 
@@ -34,7 +34,7 @@ def output(json_obj: Any, compression: bool, escape: bool, indent: int,
     output_fp.write('\n')
 
 
-def parse_jsonpath(jsonpath: str) -> list[str | int]:
+def parse_jsonpath(jsonpath: str) -> List[Union[str, int]]:
     jsonpath = jsonpath.strip().strip('/')
     if not jsonpath:
         return []
@@ -46,7 +46,7 @@ def parse_jsonpath(jsonpath: str) -> list[str | int]:
         return components  # type: ignore
 
 
-def get_element_by_components(json_obj: Any, jpath_components: list[str | int]) -> Any:
+def get_element_by_components(json_obj: Any, jpath_components: List[Union[str, int]]) -> Any:
     for i, c in enumerate(jpath_components):
         if c == '*' and isinstance(json_obj, list):
             return [get_element_by_components(sub_obj, jpath_components[i + 1:])

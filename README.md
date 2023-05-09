@@ -2,6 +2,7 @@
 
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/jsonfmt?label=Install&color=green)
 ![PyPI](https://img.shields.io/pypi/v/jsonfmt?color=9cf)
+![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/seamile/jsonfmt/python-package.yml?branch=main&label=build&logo=python)
 
 
 **jsonfmt** is a json object formatting tool.
