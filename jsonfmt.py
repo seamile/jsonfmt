@@ -43,6 +43,7 @@ def output(json_obj: Any, compression: bool, escape: bool, indent: int,
 
 
 def parse_jsonpath(jsonpath: str) -> List[Union[str, int]]:
+    '''parse the jsonpath into a list of pathname components'''
     jsonpath = jsonpath.strip().strip('/')
     if not jsonpath:
         return []
@@ -54,7 +55,8 @@ def parse_jsonpath(jsonpath: str) -> List[Union[str, int]]:
         return components  # type: ignore
 
 
-def get_element_by_components(json_obj: Any, jpath_components: List[Union[str, int]]) -> Any:
+def get_element_by_components(json_obj: Any,
+                              jpath_components: List[Union[str, int]]) -> Any:
     for i, c in enumerate(jpath_components):
         if c == '*' and isinstance(json_obj, list):
             return [get_element_by_components(sub_obj, jpath_components[i + 1:])
@@ -76,7 +78,7 @@ def jsonpath_match(json_obj: Any, jsonpath: str) -> Any:
         return get_element_by_components(json_obj, jpath_components)
 
 
-def main():
+def parse_cmdline_args():
     parser = ArgumentParser('jsonfmt')
     parser.add_argument('-c', dest='compression', action='store_true',
                         help='compression the json object in the files or stdin')
@@ -92,7 +94,11 @@ def main():
                         help='the json files that will be processed')
     parser.add_argument('-v', dest='version', action='version', version=__version__,
                         help="show the version")
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    args = parse_cmdline_args()
 
     if args.json_files:
         # get json from files
