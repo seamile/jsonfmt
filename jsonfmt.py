@@ -6,6 +6,10 @@ from sys import stdin, stdout, stderr
 from argparse import ArgumentParser
 from typing import Any, List, IO, Union
 
+from pygments import highlight
+from pygments.lexers import JsonLexer
+from pygments.formatters import TerminalFormatter
+
 __version__ = '0.1.2'
 
 
@@ -27,8 +31,12 @@ def output(json_obj: Any, compression: bool, escape: bool, indent: int,
         json.dump(json_obj, output_fp, ensure_ascii=escape,
                   sort_keys=True, separators=(',', ':'))
     else:
-        json.dump(json_obj, output_fp, ensure_ascii=escape,
-                  sort_keys=True, indent=indent)
+        json_text = json.dumps(json_obj, ensure_ascii=escape,
+                               sort_keys=True, indent=indent)
+        # highlight the json code when outputint to TTY divice
+        if output_fp.isatty():
+            json_text = highlight(json_text, JsonLexer(), TerminalFormatter())
+        output_fp.write(json_text)
 
     # append a blank line at the end of `fp``
     output_fp.write('\n')
