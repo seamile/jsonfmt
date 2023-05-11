@@ -15,6 +15,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/seamile/jsonfmt",
+    install_requires=['Pygments>=2.14.0'],
     entry_points={
         'console_scripts': ['jsonfmt=jsonfmt:main'],
     },
