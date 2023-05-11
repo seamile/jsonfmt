@@ -5,13 +5,13 @@
 ![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/seamile/jsonfmt/python-package.yml?branch=main&label=build&logo=python)
 
 
-**jsonfmt** is a json object formatting tool.
+**jsonfmt** is a JSON object formatting tool.
 
-## Features
+It has the following features:
 
-1. Print the json object in pretty format from files or stdin.
-2. Compress the json object into a single line without spaces.
-3. Output part of a large json object via jsonpath.
+1. Print the JSON object with **hightlight** and **pretty format** from files or stdin.
+2. Compress the JSON object into a single line without spaces.
+3. Output part of a large JSON object via jsonpath.
 
 ## Install
 
@@ -32,15 +32,17 @@ $ jsonfmt [-h] [-c] [-O] [-p JSONPATH] [json_files ...]
 - options:
 
      - `-h, --help`: show this help message and exit.
-     - `-c`: compression the json object in the files or stdin.
+     - `-c`: compression the JSON object in the files or stdin.
+     - `-e`: escape non-ASCII characters.
+     - `-i INDENT`: number of spaces to use for indentation. (default: 4)
      - `-O`: overwrite to the json file.
-     - `-p JSONPATH`: output part of json object via jsonpath.
+     - `-p JSONPATH`: output part of JSON object via jsonpath.
      - `-v`: show the version.
 
 
 ## Example
 
-In the file example.json there is a compressed json object.
+In the file example.json there is a compressed JSON object.
 
 1. Pretty print from json file.
 
@@ -48,23 +50,23 @@ In the file example.json there is a compressed json object.
      $ jsonfmt example.json
      ```
 
-     ouput:
+     Output:
      ```json
      {
           "age": 23,
-          "gender": "male",
+          "gender": "纯爷们",
           "history": [
                {
                     "action": "eat",
                     "date": "2021-03-02",
                     "items": [
                          {
-                              "bar": 222,
-                              "foo": 111
+                              "calorie": 294.9,
+                              "name": "hamburger"
                          },
                          {
-                              "bar": -222,
-                              "foo": -111
+                              "calorie": 266,
+                              "name": "pizza"
                          }
                     ]
                },
@@ -73,31 +75,31 @@ In the file example.json there is a compressed json object.
                     "date": "2022-11-01",
                     "items": [
                          {
-                              "bar": 444,
-                              "foo": 333
+                              "calorie": 37.5,
+                              "name": "Coca Cola"
                          },
                          {
-                              "bar": -444,
-                              "foo": -333
+                              "calorie": 54.5,
+                              "name": "juice"
                          }
                     ]
                },
                {
-                    "action": "walk",
+                    "action": "sport",
                     "date": "2023-04-27",
                     "items": [
                          {
-                              "bar": 666,
-                              "foo": 555
+                              "calorie": -375,
+                              "name": "running"
                          },
                          {
-                              "bar": -666,
-                              "foo": -555
+                              "calorie": -350,
+                              "name": "swimming"
                          }
                     ]
                }
           ],
-          "name": "bob"
+          "name": "Bob"
      }
     ```
 
@@ -107,7 +109,17 @@ In the file example.json there is a compressed json object.
      $ jsonfmt -O example.json
      ```
 
-2. Compress the json string from stdin.
+
+2. Format a JSON object from stdin via pipeline.
+
+     ```shell
+     $ curl https://raw.githubusercontent.com/seamile/jsonfmt/main/example.json | jsonfmt
+     ```
+
+     Output: Ditto.
+
+
+3. Compress the JSON object.
 
      ```shell
      $ echo '{
@@ -117,23 +129,23 @@ In the file example.json there is a compressed json object.
      }' | jsonfmt -c
      ```
 
-     ouput:
+     Output:
      ```json
      {"age":21,"items":["pen","ruler","phone"],"name":"alex"}
      ```
 
-3. Use jsonpath to match part of a json object.
+4. Use jsonpath to match part of a JSON object.
 
      **jsonfmt** uses a simplified jsonpath syntax.
 
-     - It matches json objects starting from the root node.
+     - It matches JSON objects starting from the root node.
      - You can use keys to match dictionaries and indexes to match lists, and use `/` to separate different levels.
 
           ```shell
           $ jsonfmt -p 'history/0/date' example.json
           ```
 
-          ouput:
+          Output:
           ```json
           "2021-03-02"
           ```
@@ -141,14 +153,23 @@ In the file example.json there is a compressed json object.
      - If you want to match all items in a list, just use `*` to match.
 
           ```shell
-          $ jsonfmt -p 'history/*/action' example.json
+          $ jsonfmt -p 'history/*/items/*/name' example.json
           ```
 
-          ouput:
+          Output:
           ```json
           [
-               "eat",
-               "drink",
-               "walk"
+               [
+                    "hamburger",
+                    "pizza"
+               ],
+               [
+                    "Coca Cola",
+                    "juice"
+               ],
+               [
+                    "running",
+                    "swimming"
+               ]
           ]
           ```

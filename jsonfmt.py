@@ -79,19 +79,19 @@ def jsonpath_match(json_obj: Any, jsonpath: str) -> Any:
 def main():
     parser = ArgumentParser('jsonfmt')
     parser.add_argument('-c', dest='compression', action='store_true',
-                        help='compression the json object in the files or stdin.')
+                        help='compression the json object in the files or stdin')
     parser.add_argument('-e', dest='escape', action='store_true',
                         help='escape non-ASCII characters')
     parser.add_argument('-i', dest='indent', type=int, default=4,
-                        help='number of spaces to use for indentation. (default: %(default)s)')
+                        help='number of spaces to use for indentation (default: %(default)s)')
     parser.add_argument('-O', dest='overwrite', action='store_true',
-                        help='overwrite the formated json object into the json file.')
+                        help='overwrite the formated json object into the json file')
     parser.add_argument('-p', dest='jsonpath', type=str, default='',
-                        help='output part of json object via jsonpath.')
+                        help='output part of json object via jsonpath')
     parser.add_argument(dest='json_files', nargs='*',
                         help='the json files that will be processed')
     parser.add_argument('-v', dest='version', action='version', version=__version__,
-                        help="show the version.")
+                        help="show the version")
     args = parser.parse_args()
 
     if args.json_files:
