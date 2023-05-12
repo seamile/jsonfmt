@@ -4,7 +4,7 @@
 import json
 from sys import stdin, stdout, stderr
 from argparse import ArgumentParser
-from typing import Any, List, TextIO, Union
+from typing import Any, List, IO, Union
 
 from pygments import highlight
 from pygments.lexers import JsonLexer
@@ -48,7 +48,7 @@ def match_element(py_obj: Any, jpath_components: List[Union[str, int]]) -> Any:
     return py_obj
 
 
-def read_json_to_py(json_fp: TextIO, jsonpath: str) -> Any:
+def read_json_to_py(json_fp: IO, jsonpath: str) -> Any:
     '''read json obj from IO and match sub-element by jsonpath'''
     # parse json object to python object
     try:
@@ -69,7 +69,7 @@ def read_json_to_py(json_fp: TextIO, jsonpath: str) -> Any:
 
 
 def output(py_obj: Any, compact: bool, escape: bool, indent: int,
-           output_fp: TextIO = stdout):
+           output_fp: IO = stdout):
     '''output formated json to file or stdout'''
     if output_fp.fileno() > 2:
         output_fp.seek(0)

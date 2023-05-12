@@ -1,32 +1,32 @@
 import json
 import tempfile
 import unittest
-from jsonfmt import (parse_jsonpath, get_element_by_components,
-                     jsonpath_match, output)
+from jsonfmt import (parse_jsonpath, match_element, read_json_to_py, output)
 
 
 class JSONFormatToolTestCase(unittest.TestCase):
     def setUp(self):
         with open('example.json') as json_fp:
-            self.example_json = json.load(json_fp)
+            self.example_obj = json.load(json_fp)
 
     def test_parse_jsonpath(self):
-        jsonpath = "history/0/items/2/name"
-        expected_components = ["history", 0, "items", 2, "name"]
+        jsonpath = "history/0/items/*/name"
+        expected_components = ["history", 0, "items", "*", "name"]
         components = parse_jsonpath(jsonpath)
         self.assertEqual(components, expected_components)
 
-    def test_get_element_by_components(self):
+    def test_match_element(self):
         components = ["history", 0, "items", 1, "calorie"]
         expected_element = 266
-        element = get_element_by_components(self.example_json, components)
+        element = match_element(self.example_obj, components)
         self.assertEqual(element, expected_element)
 
     def test_jsonpath_match(self):
         jsonpath = "history/*/items/1/calorie"
         expected_matched_obj = [266, 54.5, -350]
-        matched_obj = jsonpath_match(self.example_json, jsonpath)
-        self.assertEqual(matched_obj, expected_matched_obj)
+        with open('example.json') as json_fp:
+            matched_obj = read_json_to_py(json_fp, jsonpath)
+            self.assertEqual(matched_obj, expected_matched_obj)
 
     def test_output(self):
         json_obj = {"name": "John", "age": 30}
