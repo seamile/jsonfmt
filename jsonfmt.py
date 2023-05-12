@@ -4,7 +4,7 @@
 import json
 from sys import stdin, stdout, stderr
 from argparse import ArgumentParser
-from typing import Any, List, IO, Union
+from typing import Any, List, TextIO, Union
 
 from pygments import highlight
 from pygments.lexers import JsonLexer
@@ -14,32 +14,11 @@ __version__ = '0.1.4'
 
 
 def print_err(msg: str):
-    print(f'\033[0;31m{msg}\033[0m', file=stderr)
+    print(f'\033[0;91m{msg}\033[0m', file=stderr)
 
 
 class JSONPathError(Exception):
     pass
-
-
-def output(json_obj: Any, compression: bool, escape: bool, indent: int,
-           output_fp: IO = stdout):
-    '''output formated json to file or stdout'''
-    if output_fp.fileno() > 2:
-        output_fp.seek(0)
-        output_fp.truncate()
-    if compression:
-        json.dump(json_obj, output_fp, ensure_ascii=escape,
-                  sort_keys=True, separators=(',', ':'))
-    else:
-        json_text = json.dumps(json_obj, ensure_ascii=escape,
-                               sort_keys=True, indent=indent)
-        # highlight the json code when outputint to TTY divice
-        if output_fp.isatty():
-            json_text = highlight(json_text, JsonLexer(), TerminalFormatter())
-        output_fp.write(json_text)
-
-    # append a blank line at the end of `fp``
-    output_fp.write('\n')
 
 
 def parse_jsonpath(jsonpath: str) -> List[Union[str, int]]:
@@ -55,27 +34,63 @@ def parse_jsonpath(jsonpath: str) -> List[Union[str, int]]:
         return components  # type: ignore
 
 
-def get_element_by_components(json_obj: Any,
-                              jpath_components: List[Union[str, int]]) -> Any:
+def match_element(py_obj: Any, jpath_components: List[Union[str, int]]) -> Any:
     for i, c in enumerate(jpath_components):
-        if c == '*' and isinstance(json_obj, list):
-            return [get_element_by_components(sub_obj, jpath_components[i + 1:])
-                    for sub_obj in json_obj]
+        if c == '*' and isinstance(py_obj, list):
+            return [match_element(sub_obj, jpath_components[i + 1:])
+                    for sub_obj in py_obj]
         else:
             try:
-                json_obj = json_obj[c]
+                py_obj = py_obj[c]
             except (IndexError, KeyError, TypeError):
                 raise JSONPathError(f'Invalid path node `{c}`')
 
-    return json_obj
+    return py_obj
 
 
-def jsonpath_match(json_obj: Any, jsonpath: str) -> Any:
-    jpath_components = parse_jsonpath(jsonpath)
-    if not jpath_components:
-        return json_obj
+def read_json_to_py(json_fp: TextIO, jsonpath: str) -> Any:
+    '''read json obj from IO and match sub-element by jsonpath'''
+    # parse json object to python object
+    try:
+        py_obj = json.load(json_fp)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        print_err(f"no json object found from `{json_fp.name}`")
+        return
+
+    # parse jsonpath and match the sub-element of py_obj
+    if jpath_components := parse_jsonpath(jsonpath):
+        try:
+            return match_element(py_obj, jpath_components)
+        except JSONPathError as e:
+            print_err(f'{e}')
+            return
     else:
-        return get_element_by_components(json_obj, jpath_components)
+        return py_obj
+
+
+def output(py_obj: Any, compact: bool, escape: bool, indent: int,
+           output_fp: TextIO = stdout):
+    '''output formated json to file or stdout'''
+    if output_fp.fileno() > 2:
+        output_fp.seek(0)
+        output_fp.truncate()
+
+    if compact:
+        json_text = json.dumps(py_obj, ensure_ascii=escape, sort_keys=True,
+                               separators=(',', ':'))
+    else:
+        json_text = json.dumps(py_obj, ensure_ascii=escape, sort_keys=True,
+                               indent=indent)
+
+    # highlight the json code when outputint to TTY divice
+    if output_fp.isatty():
+        json_text = highlight(json_text, JsonLexer(), TerminalFormatter())
+
+    # append a blank line at the end of `fp``
+    if json_text[-1] != '\n':
+        json_text += '\n'
+
+    output_fp.write(json_text)
 
 
 def parse_cmdline_args():
@@ -101,38 +116,20 @@ def main():
     args = parse_cmdline_args()
 
     if args.json_files:
-        # get json from files
         for j_file in args.json_files:
             try:
-                with open(j_file, 'r+') as fp:
-                    try:
-                        j_obj = json.load(fp)
-                        matched_obj = jsonpath_match(j_obj, args.jsonpath)
-                    except json.decoder.JSONDecodeError:
-                        print_err(f"no json object found from file `{j_file}`")
-                        continue
-                    except JSONPathError as e:
-                        print_err(f'{e}')
-                        continue
-                    output_fp = fp if args.overwrite else stdout
-                    output(matched_obj, args.compression, args.escape,
-                           args.indent, output_fp)
-
+                # read json from file
+                with open(j_file, 'r+') as json_fp:
+                    if py_obj := read_json_to_py(json_fp, args.jsonpath):
+                        output_fp = json_fp if args.overwrite else stdout
+                        output(py_obj, args.compression, args.escape,
+                               args.indent, output_fp)
             except FileNotFoundError:
                 print_err(f'No such file `{j_file}`')
     else:
-        # get json from stdin
-        try:
-            j_obj = json.load(stdin)
-            matched_obj = jsonpath_match(j_obj, args.jsonpath)
-        except json.decoder.JSONDecodeError:
-            print_err("no json object found from `stdin`")
-            exit(1)
-        except JSONPathError as e:
-            print_err(f'{e}')
-            exit(2)
-        else:
-            output(matched_obj, args.compression, args.escape, args.indent)
+        # read json from stdin
+        if py_obj := read_json_to_py(stdin, args.jsonpath):
+            output(py_obj, args.compression, args.escape, args.indent)
 
 
 if __name__ == "__main__":
