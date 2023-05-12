@@ -1,8 +1,7 @@
 # JSON Formator
 
-![PyPI - Downloads](https://img.shields.io/pypi/dm/jsonfmt?label=Install&color=green)
-![PyPI](https://img.shields.io/pypi/v/jsonfmt?color=9cf)
-![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/seamile/jsonfmt/python-package.yml?branch=main&label=build&logo=python)
+![GitHub Build Status](https://img.shields.io/github/actions/workflow/status/seamile/jsonfmt/python-package.yml?label=Build&logo=python&logoColor=white)
+[![Downloads](https://static.pepy.tech/personalized-badge/jsonfmt?period=total&units=international_system&left_color=grey&right_color=brightgreen&left_text=Installs)](https://pepy.tech/project/jsonfmt)
 
 
 **jsonfmt** is a CLI tool for pretty printing or compressing JSON objects.
