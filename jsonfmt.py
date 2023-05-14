@@ -58,14 +58,12 @@ def read_json_to_py(json_fp: IO, jsonpath: str) -> Any:
         return
 
     # parse jsonpath and match the sub-element of py_obj
-    if jpath_components := parse_jsonpath(jsonpath):
-        try:
-            return match_element(py_obj, jpath_components)
-        except JSONPathError as e:
-            print_err(f'{e}')
-            return
-    else:
-        return py_obj
+    jpath_components = parse_jsonpath(jsonpath)
+    try:
+        return match_element(py_obj, jpath_components)
+    except JSONPathError as e:
+        print_err(f'{e}')
+        return
 
 
 def output(py_obj: Any, compact: bool, escape: bool, indent: int,
