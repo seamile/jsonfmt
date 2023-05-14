@@ -4,7 +4,7 @@
 import json
 from sys import stdin, stdout, stderr
 from argparse import ArgumentParser
-from typing import Any, List, IO, Union
+from typing import Any, List, IO, Optional, Sequence, Union
 
 from pygments import highlight
 from pygments.lexers import JsonLexer
@@ -91,7 +91,7 @@ def output(py_obj: Any, compact: bool, escape: bool, indent: int,
     output_fp.write(json_text)
 
 
-def parse_cmdline_args():
+def parse_cmdline_args(args: Optional[Sequence[str]] = None):
     parser = ArgumentParser('jsonfmt')
     parser.add_argument('-c', dest='compression', action='store_true',
                         help='compression the json object in the files or stdin')
@@ -107,7 +107,7 @@ def parse_cmdline_args():
                         help='the json files that will be processed')
     parser.add_argument('-v', dest='version', action='version', version=__version__,
                         help="show the version")
-    return parser.parse_args()
+    return parser.parse_args(args)
 
 
 def main():
