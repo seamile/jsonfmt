@@ -14,7 +14,7 @@ __version__ = '0.1.4'
 
 
 def print_err(msg: str):
-    print(f'\033[0;91m{msg}\033[0m', file=stderr)
+    print(f'\033[1;91mjsonfmt:\033[0m \033[0;91m{msg}\033[0m', file=stderr)
 
 
 class JSONPathError(Exception):
@@ -43,7 +43,7 @@ def match_element(py_obj: Any, jpath_components: List[Union[str, int]]) -> Any:
             try:
                 py_obj = py_obj[c]
             except (IndexError, KeyError, TypeError):
-                raise JSONPathError(f'Invalid path node `{c}`')
+                raise JSONPathError(f'invalid path node `{c}`')
 
     return py_obj
 
@@ -54,7 +54,7 @@ def read_json_to_py(json_fp: IO, jsonpath: str) -> Any:
     try:
         py_obj = json.load(json_fp)
     except (json.JSONDecodeError, UnicodeDecodeError):
-        print_err(f"no json object found from `{json_fp.name}`")
+        print_err(f"no json object in `{json_fp.name}`")
         return
 
     # parse jsonpath and match the sub-element of py_obj
@@ -80,7 +80,7 @@ def output(py_obj: Any, compact: bool, escape: bool, indent: int,
         json_text = json.dumps(py_obj, ensure_ascii=escape, sort_keys=True,
                                indent=indent)
 
-    # highlight the json code when outputint to TTY divice
+    # highlight the json code when output to TTY divice
     if output_fp.isatty():
         json_text = highlight(json_text, JsonLexer(), TerminalFormatter())
 
@@ -123,7 +123,7 @@ def main():
                         output(py_obj, args.compression, args.escape,
                                args.indent, output_fp)
             except FileNotFoundError:
-                print_err(f'No such file `{j_file}`')
+                print_err(f'no such file `{j_file}`')
     else:
         # read json from stdin
         if py_obj := read_json_to_py(stdin, args.jsonpath):
