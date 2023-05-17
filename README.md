@@ -1,6 +1,7 @@
 # JSON Formator
 
 ![PyPI](https://img.shields.io/pypi/v/jsonfmt?color=9cf&label=Version&logo=python&logoColor=white)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/f439519324d34fbea9a795a60d4e7754)](https://app.codacy.com/gh/seamile/jsonfmt?utm_source=github.com&utm_medium=referral&utm_content=seamile/jsonfmt&utm_campaign=Badge_Grade)
 [![Build Status](https://github.com/seamile/jsonfmt/actions/workflows/python-package.yml/badge.svg)](https://github.com/seamile/jsonfmt/actions/workflows/python-package.yml)
 [![Downloads](https://static.pepy.tech/personalized-badge/jsonfmt?period=total&units=international_system&left_color=grey&right_color=brightgreen&left_text=Installs)](https://pepy.tech/project/jsonfmt)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
