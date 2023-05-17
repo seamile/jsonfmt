@@ -1,10 +1,20 @@
 import json
+import sys
 import tempfile
 import unittest
 from argparse import Namespace
 from io import StringIO
-from jsonfmt import (JSONPathError, parse_cmdline_args, parse_jsonpath,
-                     match_element, read_json_to_py, output)
+from unittest.mock import patch
+
+import jsonfmt
+
+
+class FakeStdIn(StringIO):
+    def isatty(self):
+        return True
+
+    def fileno(self):
+        return 0
 
 
 class FakeStdout(StringIO):
@@ -13,6 +23,10 @@ class FakeStdout(StringIO):
 
     def fileno(self):
         return 1
+
+    def read(self):
+        self.seek(0)
+        return super().read()
 
 
 class JSONFormatToolTestCase(unittest.TestCase):
@@ -24,22 +38,22 @@ class JSONFormatToolTestCase(unittest.TestCase):
         # empty path
         empty_path = ""
         expected_components = []
-        components = parse_jsonpath(empty_path)
+        components = jsonfmt.parse_jsonpath(empty_path)
         self.assertEqual(components, expected_components)
         # the jsonpath contains key, index and '*'
         jsonpath = "history/0/items/*/name"
         expected_components = ["history", 0, "items", "*", "name"]
-        components = parse_jsonpath(jsonpath)
+        components = jsonfmt.parse_jsonpath(jsonpath)
         self.assertEqual(components, expected_components)
 
     def test_match_element(self):
         components = ["history", 0, "items", 1, "calorie"]
         expected_element = 266
-        element = match_element(self.example_obj, components)
+        element = jsonfmt.match_element(self.example_obj, components)
         self.assertEqual(element, expected_element)
 
-        with self.assertRaises(JSONPathError):
-            match_element(self.example_obj, ['not_exist_key'])
+        with self.assertRaises(jsonfmt.JSONPathError):
+            jsonfmt.match_element(self.example_obj, ['not_exist_key'])
 
     def test_read_json_to_py(self):
         jsonpath = "history/*/items/1/calorie"
@@ -47,39 +61,36 @@ class JSONFormatToolTestCase(unittest.TestCase):
 
         # normal parameters
         with open('example.json') as json_fp:
-            matched_obj = read_json_to_py(json_fp, jsonpath)
+            matched_obj = jsonfmt.read_json_to_py(json_fp, jsonpath)
             self.assertEqual(matched_obj, expected_matched_obj)
 
         # test empty jsonpath
         with open('example.json') as json_fp:
-            matched_obj = read_json_to_py(json_fp, "/")
+            matched_obj = jsonfmt.read_json_to_py(json_fp, "/")
             self.assertEqual(matched_obj, self.example_obj)
 
         # test not exists key
-        with open('example.json') as json_fp:
-            matched_obj = read_json_to_py(json_fp, "not_exist_key")
-            self.assertEqual(matched_obj, None)
+        with (open('example.json') as json_fp,
+              self.assertRaises(jsonfmt.JSONParseError)):
+            jsonfmt.read_json_to_py(json_fp, "not_exist_key")
 
         # test non-json file
-        with open(__file__) as json_fp:
-            matched_obj = read_json_to_py(json_fp, jsonpath)
-            self.assertEqual(matched_obj, None)
+        with open(__file__) as json_fp, self.assertRaises(jsonfmt.JSONParseError):
+            matched_obj = jsonfmt.read_json_to_py(json_fp, jsonpath)
 
+    @patch('jsonfmt.stdout', FakeStdout())
     def test_output(self):
         json_obj = {"name": "John", "age": 30}
 
-        # output to stdout (mock)
+        # jsonfmt.output to stdout (mock)
         compact_and_colored = '{\x1b[94m"age"\x1b[39;49;00m:\x1b[34m30\x1b[39;49;00m,\x1b[94m"name"\x1b[39;49;00m:\x1b[33m"John"\x1b[39;49;00m}\x1b[37m\x1b[39;49;00m\n'
-        with FakeStdout() as _output:
-            output(json_obj, True, False, 4, _output)
-            _output.seek(0)
-            output_str = _output.read()
-            self.assertEqual(output_str, compact_and_colored)
+        jsonfmt.output(json_obj, True, False, 4, jsonfmt.stdout)
+        self.assertEqual(jsonfmt.stdout.read(), compact_and_colored)
 
         # Create a temporary file
         with_indent_output = '{\n "age": 30,\n "name": "John"\n}\n'
         with tempfile.NamedTemporaryFile(mode='r+') as tmpfile:
-            output(json_obj, False, False, 1, tmpfile)
+            jsonfmt.output(json_obj, False, False, 1, tmpfile)
             tmpfile.seek(0)
             output_str = tmpfile.read()
             self.assertEqual(output_str, with_indent_output)
@@ -88,7 +99,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
         # test default parameters
         default_args = Namespace(compression=False, escape=False, indent=4,
                                  overwrite=False, jsonpath='', json_files=[])
-        actual_args = parse_cmdline_args([])
+        actual_args = jsonfmt.parse_cmdline_args([])
         self.assertEqual(actual_args, default_args)
 
         # test specified parameters
@@ -110,8 +121,22 @@ class JSONFormatToolTestCase(unittest.TestCase):
             json_files=['file1.json', 'file2.json']
         )
 
-        actual_args = parse_cmdline_args(args)
+        actual_args = jsonfmt.parse_cmdline_args(args)
         self.assertEqual(actual_args, expected_args)
+
+    @patch.multiple(sys, argv=['jsonfmt', '-p', 'name', 'example.json'])
+    @patch.multiple(jsonfmt, stdout=FakeStdout())
+    def test_main_with_file(self):
+        expected_output = '\x1b[33m"Bob"\x1b[39;49;00m\x1b[37m\x1b[39;49;00m\n'
+        jsonfmt.main()
+        self.assertEqual(jsonfmt.stdout.read(), expected_output)
+
+    @patch.multiple(sys, argv=['jsonfmt', '-p', '1'])
+    @patch.multiple(jsonfmt, stdin=FakeStdIn('["a", "b"]'), stdout=FakeStdout())
+    def test_main_with_stdin(self):
+        expected_output = '\x1b[33m"b"\x1b[39;49;00m\x1b[37m\x1b[39;49;00m\n'
+        jsonfmt.main()
+        self.assertEqual(jsonfmt.stdout.read(), expected_output)
 
 
 if __name__ == '__main__':

@@ -139,7 +139,7 @@ def main():
         except JSONParseError:
             exit(1)
         else:
-            output(py_obj, args.compression, args.escape, args.indent)
+            output(py_obj, args.compression, args.escape, args.indent, stdout)
 
 
 if __name__ == "__main__":
