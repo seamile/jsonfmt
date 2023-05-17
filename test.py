@@ -17,7 +17,7 @@ class FakeStdIn(StringIO):
         return 0
 
 
-class FakeStdout(StringIO):
+class FakeStdOut(StringIO):
     def isatty(self):
         return True
 
@@ -29,20 +29,29 @@ class FakeStdout(StringIO):
         return super().read()
 
 
+class FakeStdErr(StringIO):
+    def isatty(self):
+        return True
+
+    def fileno(self):
+        return 2
+
+
 class JSONFormatToolTestCase(unittest.TestCase):
     def setUp(self):
         with open('example.json') as json_fp:
             self.example_obj = json.load(json_fp)
 
     def test_parse_jsonpath(self):
-        # empty path
-        empty_path = ""
+        # test empty jsonpaths
         expected_components = []
-        components = jsonfmt.parse_jsonpath(empty_path)
-        self.assertEqual(components, expected_components)
-        # the jsonpath contains key, index and '*'
-        jsonpath = "history/0/items/*/name"
-        expected_components = ["history", 0, "items", "*", "name"]
+        for empty_path in ['', '/', '  ', '  /// ']:
+            components = jsonfmt.parse_jsonpath(empty_path)
+            self.assertEqual(components, expected_components)
+
+        # test jsonpath contains key, index and '*'
+        jsonpath = "history/0/items/*/ //name"
+        expected_components = ["history", 0, "items", "*", " ", "", "name"]
         components = jsonfmt.parse_jsonpath(jsonpath)
         self.assertEqual(components, expected_components)
 
@@ -69,16 +78,18 @@ class JSONFormatToolTestCase(unittest.TestCase):
             matched_obj = jsonfmt.read_json_to_py(json_fp, "/")
             self.assertEqual(matched_obj, self.example_obj)
 
-        # test not exists key
-        with open('example.json') as json_fp,\
-                self.assertRaises(jsonfmt.JSONParseError):
-            jsonfmt.read_json_to_py(json_fp, "not_exist_key")
+        with patch('jsonfmt.stderr', FakeStdErr()):
+            # test not exists key
+            with open('example.json') as json_fp,\
+                    self.assertRaises(jsonfmt.JSONParseError):
+                jsonfmt.read_json_to_py(json_fp, "not_exist_key")
 
-        # test non-json file
-        with open(__file__) as json_fp, self.assertRaises(jsonfmt.JSONParseError):
-            matched_obj = jsonfmt.read_json_to_py(json_fp, jsonpath)
+            # test non-json file
+            with open(__file__) as json_fp,\
+                    self.assertRaises(jsonfmt.JSONParseError):
+                matched_obj = jsonfmt.read_json_to_py(json_fp, jsonpath)
 
-    @patch('jsonfmt.stdout', FakeStdout())
+    @patch('jsonfmt.stdout', FakeStdOut())
     def test_output(self):
         json_obj = {"name": "John", "age": 30}
 
@@ -125,14 +136,14 @@ class JSONFormatToolTestCase(unittest.TestCase):
         self.assertEqual(actual_args, expected_args)
 
     @patch.multiple(sys, argv=['jsonfmt', '-p', 'name', 'example.json'])
-    @patch.multiple(jsonfmt, stdout=FakeStdout())
+    @patch.multiple(jsonfmt, stdout=FakeStdOut())
     def test_main_with_file(self):
         expected_output = '\x1b[33m"Bob"\x1b[39;49;00m\x1b[37m\x1b[39;49;00m\n'
         jsonfmt.main()
         self.assertEqual(jsonfmt.stdout.read(), expected_output)
 
     @patch.multiple(sys, argv=['jsonfmt', '-p', '1'])
-    @patch.multiple(jsonfmt, stdin=FakeStdIn('["a", "b"]'), stdout=FakeStdout())
+    @patch.multiple(jsonfmt, stdin=FakeStdIn('["a", "b"]'), stdout=FakeStdOut())
     def test_main_with_stdin(self):
         expected_output = '\x1b[33m"b"\x1b[39;49;00m\x1b[37m\x1b[39;49;00m\n'
         jsonfmt.main()

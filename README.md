@@ -1,6 +1,7 @@
 # JSON Formator
 
-![GitHub Build Status](https://img.shields.io/github/actions/workflow/status/seamile/jsonfmt/python-package.yml?label=Build&logo=python&logoColor=white)
+![PyPI](https://img.shields.io/pypi/v/jsonfmt?color=9cf&label=Version&logo=python&logoColor=white)
+[![Build Status](https://github.com/seamile/jsonfmt/actions/workflows/python-package.yml/badge.svg)](https://github.com/seamile/jsonfmt/actions/workflows/python-package.yml)
 [![Downloads](https://static.pepy.tech/personalized-badge/jsonfmt?period=total&units=international_system&left_color=grey&right_color=brightgreen&left_text=Installs)](https://pepy.tech/project/jsonfmt)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
@@ -44,137 +45,137 @@ $ jsonfmt [-h] [-c] [-O] [-p JSONPATH] [json_files ...]
 
 In the file example.json there is a compressed JSON object.
 
-1. Pretty print from json file.
+### 1. Pretty print from json file.
 
-    ```shell
-    $ jsonfmt example.json
-    ```
+```shell
+$ jsonfmt example.json
+```
 
-    Output:
-    ```json
-    {
-        "age": 23,
-        "gender": "纯爷们",
-        "history": [
-            {
-                "action": "eat",
-                "date": "2021-03-02",
-                "items": [
-                    {
-                        "calorie": 294.9,
-                        "name": "hamburger"
-                    },
-                    {
-                        "calorie": 266,
-                        "name": "pizza"
-                    }
-                ]
-            },
-            {
-                "action": "drink",
-                "date": "2022-11-01",
-                "items": [
-                    {
-                        "calorie": 37.5,
-                        "name": "Coca Cola"
-                    },
-                    {
-                        "calorie": 54.5,
-                        "name": "juice"
-                    }
-                ]
-            },
-            {
-                "action": "sport",
-                "date": "2023-04-27",
-                "items": [
-                    {
-                        "calorie": -375,
-                        "name": "running"
-                    },
-                    {
-                        "calorie": -350,
-                        "name": "swimming"
-                    }
-                ]
-            }
-        ],
-        "name": "Bob"
-    }
-    ```
-
-2. Format a JSON object from stdin via pipeline.
-
-    ```shell
-    $ curl https://raw.githubusercontent.com/seamile/jsonfmt/main/example.json | jsonfmt
-    ```
-
-    Output: Ditto.
-
-
-3. Minimize the JSON object.
-
-    ```shell
-    $ echo '{
-        "name": "alex",
-        "age": 21,
-        "items": ["pen", "ruler", "phone"]
-    }' | jsonfmt -c
-    ```
-
-    Output:
-    ```json
-    {"age":21,"items":["pen","ruler","phone"],"name":"alex"}
-    ```
-
-4. Use jsonpath to match part of a JSON object.
-
-    **jsonfmt** uses a simplified jsonpath syntax.
-
-    - It matches JSON objects starting from the root node.
-    - You can use keys to match dictionaries and indexes to match lists, and use `/` to separate different levels.
-
-        ```shell
-        $ jsonfmt -p 'history/0/date' example.json
-        ```
-
-        Output:
-        ```json
-        "2021-03-02"
-        ```
-
-    - If you want to match all items in a list, just use `*` to match.
-
-        ```shell
-        $ jsonfmt -p 'history/*/items/*/name' example.json
-        ```
-
-        Output:
-        ```json
-        [
-            [
-                "hamburger",
-                "pizza"
-            ],
-            [
-                "Coca Cola",
-                "juice"
-            ],
-            [
-                "running",
-                "swimming"
+Output:
+```json
+{
+    "age": 23,
+    "gender": "纯爷们",
+    "history": [
+        {
+            "action": "eat",
+            "date": "2021-03-02",
+            "items": [
+                {
+                    "calorie": 294.9,
+                    "name": "hamburger"
+                },
+                {
+                    "calorie": 266,
+                    "name": "pizza"
+                }
             ]
+        },
+        {
+            "action": "drink",
+            "date": "2022-11-01",
+            "items": [
+                {
+                    "calorie": 37.5,
+                    "name": "Coca Cola"
+                },
+                {
+                    "calorie": 54.5,
+                    "name": "juice"
+                }
+            ]
+        },
+        {
+            "action": "sport",
+            "date": "2023-04-27",
+            "items": [
+                {
+                    "calorie": -375,
+                    "name": "running"
+                },
+                {
+                    "calorie": -350,
+                    "name": "swimming"
+                }
+            ]
+        }
+    ],
+    "name": "Bob"
+}
+```
+
+### 2. Format a JSON object from stdin via pipeline.
+
+```shell
+$ curl https://raw.githubusercontent.com/seamile/jsonfmt/main/example.json | jsonfmt
+```
+
+Output: Ditto.
+
+
+### 3. Minimize the JSON object.
+
+```shell
+$ echo '{
+    "name": "alex",
+    "age": 21,
+    "items": ["pen", "ruler", "phone"]
+}' | jsonfmt -c
+```
+
+Output:
+```json
+{"age":21,"items":["pen","ruler","phone"],"name":"alex"}
+```
+
+### 4. Use jsonpath to match part of a JSON object.
+
+**jsonfmt** uses a simplified jsonpath syntax.
+
+- It matches JSON objects starting from the root node.
+- You can use keys to match dictionaries and indexes to match lists, and use `/` to separate different levels.
+
+    ```shell
+    $ jsonfmt -p 'history/0/date' example.json
+    ```
+
+    Output:
+    ```json
+    "2021-03-02"
+    ```
+
+- If you want to match all items in a list, just use `*` to match.
+
+    ```shell
+    $ jsonfmt -p 'history/*/items/*/name' example.json
+    ```
+
+    Output:
+    ```json
+    [
+        [
+            "hamburger",
+            "pizza"
+        ],
+        [
+            "Coca Cola",
+            "juice"
+        ],
+        [
+            "running",
+            "swimming"
         ]
-        ```
-
-4. You can use the `-O` parameter to overwrite the file with the result.
-
-    ```shell
-    $ jsonfmt -O example.json
+    ]
     ```
 
-5. To output the result to a new file, you can use the redirect symbol `>`.
+### 5. You can use the `-O` parameter to overwrite the file with the result.
 
-    ```shell
-    $ jsonfmt example.json > formatted.json
-    ```
+```shell
+$ jsonfmt -O example.json
+```
+
+### 6. To output the result to a new file, you can use the redirect symbol `>`.
+
+```shell
+$ jsonfmt example.json > formatted.json
+```
