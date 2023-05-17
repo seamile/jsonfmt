@@ -21,6 +21,10 @@ class JSONPathError(Exception):
     pass
 
 
+class JSONParseError(Exception):
+    pass
+
+
 def parse_jsonpath(jsonpath: str) -> List[Union[str, int]]:
     '''parse the jsonpath into a list of pathname components'''
     jsonpath = jsonpath.strip().strip('/')
@@ -53,9 +57,9 @@ def read_json_to_py(json_fp: IO, jsonpath: str) -> Any:
     # parse json object to python object
     try:
         py_obj = json.load(json_fp)
-    except (json.JSONDecodeError, UnicodeDecodeError):
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
         print_err(f"no json object in `{json_fp.name}`")
-        return
+        raise JSONParseError from e
 
     # parse jsonpath and match the sub-element of py_obj
     jpath_components = parse_jsonpath(jsonpath)
@@ -63,7 +67,7 @@ def read_json_to_py(json_fp: IO, jsonpath: str) -> Any:
         return match_element(py_obj, jpath_components)
     except JSONPathError as e:
         print_err(f'{e}')
-        return
+        raise JSONParseError from e
 
 
 def output(py_obj: Any, compact: bool, escape: bool, indent: int,
@@ -118,7 +122,11 @@ def main():
             try:
                 # read json from file
                 with open(j_file, 'r+') as json_fp:
-                    if py_obj := read_json_to_py(json_fp, args.jsonpath):
+                    try:
+                        py_obj = read_json_to_py(json_fp, args.jsonpath)
+                    except JSONParseError:
+                        exit(1)
+                    else:
                         output_fp = json_fp if args.overwrite else stdout
                         output(py_obj, args.compression, args.escape,
                                args.indent, output_fp)
@@ -126,7 +134,11 @@ def main():
                 print_err(f'no such file `{j_file}`')
     else:
         # read json from stdin
-        if py_obj := read_json_to_py(stdin, args.jsonpath):
+        try:
+            py_obj = read_json_to_py(stdin, args.jsonpath)
+        except JSONParseError:
+            exit(1)
+        else:
             output(py_obj, args.compression, args.escape, args.indent)
 
 
