@@ -70,8 +70,8 @@ class JSONFormatToolTestCase(unittest.TestCase):
             self.assertEqual(matched_obj, self.example_obj)
 
         # test not exists key
-        with (open('example.json') as json_fp,
-              self.assertRaises(jsonfmt.JSONParseError)):
+        with open('example.json') as json_fp,\
+                self.assertRaises(jsonfmt.JSONParseError):
             jsonfmt.read_json_to_py(json_fp, "not_exist_key")
 
         # test non-json file
