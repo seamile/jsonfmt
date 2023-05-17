@@ -10,7 +10,7 @@ from pygments import highlight
 from pygments.lexers import JsonLexer
 from pygments.formatters import TerminalFormatter
 
-__version__ = '0.1.4'
+__version__ = '0.1.5'
 
 
 def print_err(msg: str):
