@@ -2,7 +2,7 @@
 '''JSON Format Tool'''
 
 import json
-from sys import stdin, stdout, stderr
+from sys import stdin, stdout, stderr, exit
 from argparse import ArgumentParser
 from typing import Any, List, IO, Optional, Sequence, Union
 
@@ -27,27 +27,26 @@ class JSONParseError(Exception):
 
 def parse_jsonpath(jsonpath: str) -> List[Union[str, int]]:
     '''parse the jsonpath into a list of pathname components'''
-    jsonpath = jsonpath.strip().strip('/')
-    if not jsonpath:
-        return []
-    else:
+    if jsonpath := jsonpath.strip().strip('/'):
         components = jsonpath.split('/')
-        for i, c in enumerate(components):
-            if c.isdecimal():
-                components[i] = int(c)  # type: ignore
+        for i, component in enumerate(components):
+            if component.isdecimal():
+                components[i] = int(component)  # type: ignore
         return components  # type: ignore
+    else:
+        return []
 
 
 def match_element(py_obj: Any, jpath_components: List[Union[str, int]]) -> Any:
-    for i, c in enumerate(jpath_components):
-        if c == '*' and isinstance(py_obj, list):
+    for i, component in enumerate(jpath_components):
+        if component == '*' and isinstance(py_obj, list):
             return [match_element(sub_obj, jpath_components[i + 1:])
                     for sub_obj in py_obj]
         else:
             try:
-                py_obj = py_obj[c]
-            except (IndexError, KeyError, TypeError):
-                raise JSONPathError(f'invalid path node `{c}`')
+                py_obj = py_obj[component]
+            except (IndexError, KeyError, TypeError) as err:
+                raise JSONPathError(f'invalid path node `{component}`') from err
 
     return py_obj
 
@@ -57,17 +56,17 @@ def read_json_to_py(json_fp: IO, jsonpath: str) -> Any:
     # parse json object to python object
     try:
         py_obj = json.load(json_fp)
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+    except (json.JSONDecodeError, UnicodeDecodeError) as err:
         print_err(f"no json object in `{json_fp.name}`")
-        raise JSONParseError from e
+        raise JSONParseError from err
 
     # parse jsonpath and match the sub-element of py_obj
     jpath_components = parse_jsonpath(jsonpath)
     try:
         return match_element(py_obj, jpath_components)
-    except JSONPathError as e:
-        print_err(f'{e}')
-        raise JSONParseError from e
+    except JSONPathError as err:
+        print_err(f'{err}')
+        raise JSONParseError from err
 
 
 def output(py_obj: Any, compact: bool, escape: bool, indent: int,
@@ -98,19 +97,19 @@ def output(py_obj: Any, compact: bool, escape: bool, indent: int,
 def parse_cmdline_args(args: Optional[Sequence[str]] = None):
     parser = ArgumentParser('jsonfmt')
     parser.add_argument('-c', dest='compression', action='store_true',
-                        help='compression the json object in the files or stdin')
+                        help='compression the json object in files or stdin')
     parser.add_argument('-e', dest='escape', action='store_true',
                         help='escape non-ASCII characters')
     parser.add_argument('-i', dest='indent', type=int, default=4,
                         help='number of spaces to use for indentation (default: %(default)s)')
     parser.add_argument('-O', dest='overwrite', action='store_true',
-                        help='overwrite the formated json object into the json file')
+                        help='overwrite the formated json object to original file')
     parser.add_argument('-p', dest='jsonpath', type=str, default='',
                         help='output part of json object via jsonpath')
     parser.add_argument(dest='json_files', nargs='*',
                         help='the json files that will be processed')
-    parser.add_argument('-v', dest='version', action='version', version=__version__,
-                        help="show the version")
+    parser.add_argument('-v', dest='version', action='version',
+                        version=__version__, help="show the version")
     return parser.parse_args(args)
 
 
