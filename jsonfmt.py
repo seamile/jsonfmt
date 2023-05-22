@@ -4,7 +4,7 @@
 import json
 import tomlkit
 import yaml
-
+from tomlkit.exceptions import UnexpectedCharError
 from argparse import ArgumentParser
 from functools import partial
 from pygments import highlight
@@ -24,7 +24,7 @@ class JSONPathError(Exception):
     pass
 
 
-class JSONParseError(Exception):
+class ParseError(Exception):
     pass
 
 
@@ -54,14 +54,21 @@ def match_element(py_obj: Any, jpath_components: List[Union[str, int]]) -> Any:
     return py_obj
 
 
-def read_json_to_py(json_fp: IO, jsonpath: str) -> Any:
-    '''read json obj from IO and match sub-element by jsonpath'''
-    # parse json object to python object
-    try:
-        py_obj = json.load(json_fp)
-    except (json.JSONDecodeError, UnicodeDecodeError) as err:
-        print_err(f"no json object in `{json_fp.name}`")
-        raise JSONParseError from err
+def parse_to_pyobj(input_fp: IO, jsonpath: str) -> Any:
+    '''read json, yaml or toml from IO and then match sub-element by jsonpath'''
+    # parse json, yaml or toml to python object
+    yaml_load = partial(yaml.load, Loader=yaml.Loader)
+    for fn_load in [json.load, tomlkit.load, yaml_load]:
+        if input_fp.fileno() > 2:
+            input_fp.seek(0)
+        try:
+            py_obj = fn_load(input_fp)
+            break
+        except (json.JSONDecodeError, UnicodeDecodeError, UnexpectedCharError):
+            continue
+    else:
+        print_err(f"no json object in `{input_fp.name}`")
+        exit(1)
 
     # parse jsonpath and match the sub-element of py_obj
     jpath_components = parse_jsonpath(jsonpath)
@@ -69,7 +76,7 @@ def read_json_to_py(json_fp: IO, jsonpath: str) -> Any:
         return match_element(py_obj, jpath_components)
     except JSONPathError as err:
         print_err(f'{err}')
-        raise JSONParseError from err
+        raise ParseError from err
 
 
 def output_json(py_obj: Any, output_fp: IO, compact: bool,
@@ -158,7 +165,7 @@ def main():
     args = parse_cmdline_args()
 
     # match the specified output function
-    output_func = {
+    fn_output = {
         'json': partial(output_json, compact=args.compact,
                         escape=args.escape, indent=args.indent),
         'yaml': partial(output_yaml, escape=args.escape, indent=args.indent),
@@ -168,25 +175,25 @@ def main():
     if args.json_files:
         for j_file in args.json_files:
             try:
-                # read json from file
-                with open(j_file, 'r+') as json_fp:
+                # read from file
+                with open(j_file, 'r+') as input_fp:
                     try:
-                        py_obj = read_json_to_py(json_fp, args.jsonpath)
-                    except JSONParseError:
+                        py_obj = parse_to_pyobj(input_fp, args.jsonpath)
+                    except ParseError:
                         exit(1)
                     else:
-                        output_fp = json_fp if args.overwrite else stdout
-                        output_func(py_obj, output_fp)
+                        output_fp = input_fp if args.overwrite else stdout
+                        fn_output(py_obj, output_fp)
             except FileNotFoundError:
                 print_err(f'no such file `{j_file}`')
     else:
-        # read json from stdin
+        # read from stdin
         try:
-            py_obj = read_json_to_py(stdin, args.jsonpath)
-        except JSONParseError:
+            py_obj = parse_to_pyobj(stdin, args.jsonpath)
+        except ParseError:
             exit(1)
         else:
-            output_func(py_obj, stdout)
+            fn_output(py_obj, stdout)
 
 
 if __name__ == "__main__":
