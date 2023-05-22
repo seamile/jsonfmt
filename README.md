@@ -33,7 +33,7 @@ $ jsonfmt [-h] [-c] [-O] [-p JSONPATH] [json_files ...]
 - options:
 
     - `-h, --help`: show this help message and exit.
-    - `-c`: compression the JSON object in the files or stdin.
+    - `-c`: compact the json object to a single line.
     - `-e`: escape non-ASCII characters.
     - `-i INDENT`: number of spaces to use for indentation. (default: 4)
     - `-O`: overwrite to the json file.

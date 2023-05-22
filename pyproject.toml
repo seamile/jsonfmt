@@ -11,7 +11,11 @@ description = "A simple tool for formatting JSON object."
 readme = "README.md"
 keywords = ["json", "formatter", "pretty-print", "highlight", "jsonpath"]
 authors = [{name = "Seamile", email = "lanhuermao@gmail.com"}]
-dependencies = ["Pygments >=2.13.0"]
+dependencies = [
+    "Pygments >= 2.13.0",
+    "pyyaml >= 6.0",
+    "tomlkit >= 0.11.0"
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",

@@ -2,15 +2,18 @@
 '''JSON Format Tool'''
 
 import json
-from sys import stdin, stdout, stderr, exit
+import tomlkit
+import yaml
+
 from argparse import ArgumentParser
+from functools import partial
+from pygments import highlight
+from pygments.formatters import TerminalFormatter
+from pygments.lexers import JsonLexer, YamlLexer, TOMLLexer
+from sys import stdin, stdout, stderr, exit
 from typing import Any, List, IO, Optional, Sequence, Union
 
-from pygments import highlight
-from pygments.lexers import JsonLexer
-from pygments.formatters import TerminalFormatter
-
-__version__ = '0.1.5'
+__version__ = '0.2.0'
 
 
 def print_err(msg: str):
@@ -69,8 +72,8 @@ def read_json_to_py(json_fp: IO, jsonpath: str) -> Any:
         raise JSONParseError from err
 
 
-def output(py_obj: Any, compact: bool, escape: bool, indent: int,
-           output_fp: IO = stdout):
+def output_json(py_obj: Any, compact: bool, escape: bool, indent: int,
+                output_fp: IO = stdout):
     '''output formated json to file or stdout'''
     if output_fp.fileno() > 2:
         output_fp.seek(0)
@@ -94,12 +97,44 @@ def output(py_obj: Any, compact: bool, escape: bool, indent: int,
     output_fp.write(json_text)
 
 
+def output_yaml(py_obj: Any, output_fp: IO = stdout):
+    '''output formated yaml to file or stdout'''
+    if output_fp.fileno() > 2:
+        output_fp.seek(0)
+        output_fp.truncate()
+
+    # highlight the json code when output to TTY divice
+    if output_fp.isatty():
+        yaml_text = yaml.safe_dump(py_obj, allow_unicode=True, sort_keys=True)
+        highlight_yaml = highlight(yaml_text, YamlLexer(), TerminalFormatter())
+        output_fp.write(highlight_yaml)
+    else:
+        yaml.safe_dump(py_obj, output_fp, allow_unicode=True, sort_keys=True)
+
+
+def output_toml(py_obj: Any, output_fp: IO = stdout):
+    '''output formated toml to file or stdout'''
+    if output_fp.fileno() > 2:
+        output_fp.seek(0)
+        output_fp.truncate()
+
+    toml_text = tomlkit.dumps(py_obj, sort_keys=True)
+
+    # highlight the json code when output to TTY divice
+    if output_fp.isatty():
+        toml_text = highlight(toml_text, TOMLLexer(), TerminalFormatter())
+
+    output_fp.write(toml_text)
+
+
 def parse_cmdline_args(args: Optional[Sequence[str]] = None):
     parser = ArgumentParser('jsonfmt')
-    parser.add_argument('-c', dest='compression', action='store_true',
-                        help='compression the json object in files or stdin')
+    parser.add_argument('-c', dest='compact', action='store_true',
+                        help='compact the json object to a single line')
     parser.add_argument('-e', dest='escape', action='store_true',
                         help='escape non-ASCII characters')
+    parser.add_argument('-f', dest='format', choices=['json', 'toml', 'yaml'],
+                        default='json', help='the format to output (default: %(default)s)')
     parser.add_argument('-i', dest='indent', type=int, default=4,
                         help='number of spaces to use for indentation (default: %(default)s)')
     parser.add_argument('-O', dest='overwrite', action='store_true',
@@ -116,6 +151,13 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
 def main():
     args = parse_cmdline_args()
 
+    # match the specified output function
+    output_func = {
+        'json': partial(output_json, compact=args.compact, escape=args.escape, indent=args.indent),
+        'yaml': output_yaml,
+        'toml': output_toml,
+    }[args.format]
+
     if args.json_files:
         for j_file in args.json_files:
             try:
@@ -127,8 +169,7 @@ def main():
                         exit(1)
                     else:
                         output_fp = json_fp if args.overwrite else stdout
-                        output(py_obj, args.compression, args.escape,
-                               args.indent, output_fp)
+                        output_func(py_obj, output_fp=output_fp)
             except FileNotFoundError:
                 print_err(f'no such file `{j_file}`')
     else:
@@ -138,7 +179,7 @@ def main():
         except JSONParseError:
             exit(1)
         else:
-            output(py_obj, args.compression, args.escape, args.indent, stdout)
+            output_func(py_obj, output_fp=stdout)
 
 
 if __name__ == "__main__":
