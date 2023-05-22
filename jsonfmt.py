@@ -72,8 +72,8 @@ def read_json_to_py(json_fp: IO, jsonpath: str) -> Any:
         raise JSONParseError from err
 
 
-def output_json(py_obj: Any, compact: bool, escape: bool, indent: int,
-                output_fp: IO = stdout):
+def output_json(py_obj: Any, output_fp: IO, compact: bool,
+                escape: bool, indent: int):
     '''output formated json to file or stdout'''
     if output_fp.fileno() > 2:
         output_fp.seek(0)
@@ -97,7 +97,7 @@ def output_json(py_obj: Any, compact: bool, escape: bool, indent: int,
     output_fp.write(json_text)
 
 
-def output_yaml(py_obj: Any, output_fp: IO = stdout):
+def output_yaml(py_obj: Any, output_fp: IO, escape: bool, indent: int):
     '''output formated yaml to file or stdout'''
     if output_fp.fileno() > 2:
         output_fp.seek(0)
@@ -105,26 +105,32 @@ def output_yaml(py_obj: Any, output_fp: IO = stdout):
 
     # highlight the json code when output to TTY divice
     if output_fp.isatty():
-        yaml_text = yaml.safe_dump(py_obj, allow_unicode=True, sort_keys=True)
+        yaml_text = yaml.safe_dump(py_obj, allow_unicode=not escape,
+                                   indent=indent, sort_keys=True)
         highlight_yaml = highlight(yaml_text, YamlLexer(), TerminalFormatter())
         output_fp.write(highlight_yaml)
     else:
-        yaml.safe_dump(py_obj, output_fp, allow_unicode=True, sort_keys=True)
+        yaml.safe_dump(py_obj, output_fp, allow_unicode=not escape,
+                       indent=indent, sort_keys=True)
 
 
-def output_toml(py_obj: Any, output_fp: IO = stdout):
+def output_toml(py_obj: Any, output_fp: IO):
     '''output formated toml to file or stdout'''
+    if not isinstance(py_obj, dict):
+        print_err('the pyobj must be a Mapping when format to toml')
+        exit(1)
+
     if output_fp.fileno() > 2:
         output_fp.seek(0)
         output_fp.truncate()
 
-    toml_text = tomlkit.dumps(py_obj, sort_keys=True)
-
     # highlight the json code when output to TTY divice
     if output_fp.isatty():
-        toml_text = highlight(toml_text, TOMLLexer(), TerminalFormatter())
-
-    output_fp.write(toml_text)
+        toml_text = tomlkit.dumps(py_obj, sort_keys=True)
+        highlight_toml = highlight(toml_text, TOMLLexer(), TerminalFormatter())
+        output_fp.write(highlight_toml)
+    else:
+        tomlkit.dump(py_obj, output_fp, sort_keys=True)
 
 
 def parse_cmdline_args(args: Optional[Sequence[str]] = None):
@@ -135,7 +141,7 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
                         help='escape non-ASCII characters')
     parser.add_argument('-f', dest='format', choices=['json', 'toml', 'yaml'],
                         default='json', help='the format to output (default: %(default)s)')
-    parser.add_argument('-i', dest='indent', type=int, default=4,
+    parser.add_argument('-i', dest='indent', type=int, default=2,
                         help='number of spaces to use for indentation (default: %(default)s)')
     parser.add_argument('-O', dest='overwrite', action='store_true',
                         help='overwrite the formated json object to original file')
@@ -153,8 +159,9 @@ def main():
 
     # match the specified output function
     output_func = {
-        'json': partial(output_json, compact=args.compact, escape=args.escape, indent=args.indent),
-        'yaml': output_yaml,
+        'json': partial(output_json, compact=args.compact,
+                        escape=args.escape, indent=args.indent),
+        'yaml': partial(output_yaml, escape=args.escape, indent=args.indent),
         'toml': output_toml,
     }[args.format]
 
@@ -169,7 +176,7 @@ def main():
                         exit(1)
                     else:
                         output_fp = json_fp if args.overwrite else stdout
-                        output_func(py_obj, output_fp=output_fp)
+                        output_func(py_obj, output_fp)
             except FileNotFoundError:
                 print_err(f'no such file `{j_file}`')
     else:
@@ -179,7 +186,7 @@ def main():
         except JSONParseError:
             exit(1)
         else:
-            output_func(py_obj, output_fp=stdout)
+            output_func(py_obj, stdout)
 
 
 if __name__ == "__main__":
