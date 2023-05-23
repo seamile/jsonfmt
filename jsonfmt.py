@@ -4,7 +4,6 @@
 import json
 import tomlkit
 import yaml
-from tomlkit.exceptions import UnexpectedCharError
 from argparse import ArgumentParser
 from functools import partial
 from pygments import highlight
@@ -55,19 +54,18 @@ def match_element(py_obj: Any, jpath_components: List[Union[str, int]]) -> Any:
 
 
 def parse_to_pyobj(input_fp: IO, jsonpath: str) -> Any:
-    '''read json, yaml or toml from IO and then match sub-element by jsonpath'''
-    # parse json, yaml or toml to python object
+    '''read json, toml or yaml from IO and then match sub-element by jsonpath'''
+    # parse json, toml or yaml to python object
+    obj_text = input_fp.read()
     yaml_load = partial(yaml.load, Loader=yaml.Loader)
-    for fn_load in [json.load, tomlkit.load, yaml_load]:
-        if input_fp.fileno() > 2:
-            input_fp.seek(0)
+    for fn_loads in [json.loads, tomlkit.loads, yaml_load]:
         try:
-            py_obj = fn_load(input_fp)
+            py_obj = fn_loads(obj_text)
             break
-        except (json.JSONDecodeError, UnicodeDecodeError, UnexpectedCharError):
+        except Exception:
             continue
     else:
-        print_err(f"no json object in `{input_fp.name}`")
+        print_err(f"no json, toml or yaml object in `{input_fp.name}`")
         exit(1)
 
     # parse jsonpath and match the sub-element of py_obj

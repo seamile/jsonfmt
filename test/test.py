@@ -95,13 +95,13 @@ class JSONFormatToolTestCase(unittest.TestCase):
 
         # jsonfmt.output to stdout (mock)
         compact_and_colored = '{\x1b[94m"age"\x1b[39;49;00m:\x1b[34m30\x1b[39;49;00m,\x1b[94m"name"\x1b[39;49;00m:\x1b[33m"John"\x1b[39;49;00m}\x1b[37m\x1b[39;49;00m\n'
-        jsonfmt.output(json_obj, True, False, 4, jsonfmt.stdout)
+        jsonfmt.output_json(json_obj, jsonfmt.stdout, True, False, 4)
         self.assertEqual(jsonfmt.stdout.read(), compact_and_colored)
 
         # Create a temporary file
         with_indent_output = '{\n "age": 30,\n "name": "John"\n}\n'
         with tempfile.NamedTemporaryFile(mode='r+') as tmpfile:
-            jsonfmt.output(json_obj, False, False, 1, tmpfile)
+            jsonfmt.output_json(json_obj, tmpfile, False, False, 1)
             tmpfile.seek(0)
             output_str = tmpfile.read()
             self.assertEqual(output_str, with_indent_output)
