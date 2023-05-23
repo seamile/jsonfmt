@@ -33,7 +33,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Test with pytest
-        run: pytest test.py
+        run: pytest test/test.py
 
       - name: Build package
         run: python -m build

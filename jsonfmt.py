@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 from functools import partial
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
-from pygments.lexers import JsonLexer, YamlLexer, TOMLLexer
+from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 from sys import stdin, stdout, stderr, exit
 from typing import Any, List, IO, Optional, Sequence, Union
 
@@ -66,7 +66,7 @@ def parse_to_pyobj(input_fp: IO, jsonpath: str) -> Any:
             continue
     else:
         print_err(f"no json, toml or yaml object in `{input_fp.name}`")
-        exit(1)
+        raise ParseError
 
     # parse jsonpath and match the sub-element of py_obj
     jpath_components = parse_jsonpath(jsonpath)
@@ -102,13 +102,32 @@ def output_json(py_obj: Any, output_fp: IO, compact: bool,
     output_fp.write(json_text)
 
 
+def output_toml(py_obj: Any, output_fp: IO):
+    '''output formated toml to file or stdout'''
+    if not isinstance(py_obj, dict):
+        print_err('the pyobj must be a Mapping when format to toml')
+        exit(3)
+
+    if output_fp.fileno() > 2:
+        output_fp.seek(0)
+        output_fp.truncate()
+
+    # highlight the toml code when output to TTY divice
+    if output_fp.isatty():
+        toml_text = toml.dumps(py_obj)
+        highlight_toml = highlight(toml_text, TOMLLexer(), TerminalFormatter())
+        output_fp.write(highlight_toml)
+    else:
+        toml.dump(py_obj, output_fp)
+
+
 def output_yaml(py_obj: Any, output_fp: IO, escape: bool, indent: int):
     '''output formated yaml to file or stdout'''
     if output_fp.fileno() > 2:
         output_fp.seek(0)
         output_fp.truncate()
 
-    # highlight the json code when output to TTY divice
+    # highlight the yaml code when output to TTY divice
     if output_fp.isatty():
         yaml_text = yaml.safe_dump(py_obj, allow_unicode=not escape,
                                    indent=indent, sort_keys=True)
@@ -117,25 +136,6 @@ def output_yaml(py_obj: Any, output_fp: IO, escape: bool, indent: int):
     else:
         yaml.safe_dump(py_obj, output_fp, allow_unicode=not escape,
                        indent=indent, sort_keys=True)
-
-
-def output_toml(py_obj: Any, output_fp: IO):
-    '''output formated toml to file or stdout'''
-    if not isinstance(py_obj, dict):
-        print_err('the pyobj must be a Mapping when format to toml')
-        exit(1)
-
-    if output_fp.fileno() > 2:
-        output_fp.seek(0)
-        output_fp.truncate()
-
-    # highlight the json code when output to TTY divice
-    if output_fp.isatty():
-        toml_text = toml.dumps(py_obj)
-        highlight_toml = highlight(toml_text, TOMLLexer(), TerminalFormatter())
-        output_fp.write(highlight_toml)
-    else:
-        toml.dump(py_obj, output_fp)
 
 
 def parse_cmdline_args(args: Optional[Sequence[str]] = None):
@@ -189,7 +189,7 @@ def main():
         try:
             py_obj = parse_to_pyobj(stdin, args.jsonpath)
         except ParseError:
-            exit(1)
+            exit(2)
         else:
             fn_output(py_obj, stdout)
 
