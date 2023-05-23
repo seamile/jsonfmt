@@ -2,7 +2,7 @@
 '''JSON Format Tool'''
 
 import json
-import tomlkit
+import toml
 import yaml
 from argparse import ArgumentParser
 from functools import partial
@@ -58,7 +58,7 @@ def parse_to_pyobj(input_fp: IO, jsonpath: str) -> Any:
     # parse json, toml or yaml to python object
     obj_text = input_fp.read()
     yaml_load = partial(yaml.load, Loader=yaml.Loader)
-    for fn_loads in [json.loads, tomlkit.loads, yaml_load]:
+    for fn_loads in [json.loads, toml.loads, yaml_load]:
         try:
             py_obj = fn_loads(obj_text)
             break
@@ -131,11 +131,11 @@ def output_toml(py_obj: Any, output_fp: IO):
 
     # highlight the json code when output to TTY divice
     if output_fp.isatty():
-        toml_text = tomlkit.dumps(py_obj, sort_keys=True)
+        toml_text = toml.dumps(py_obj)
         highlight_toml = highlight(toml_text, TOMLLexer(), TerminalFormatter())
         output_fp.write(highlight_toml)
     else:
-        tomlkit.dump(py_obj, output_fp, sort_keys=True)
+        toml.dump(py_obj, output_fp)
 
 
 def parse_cmdline_args(args: Optional[Sequence[str]] = None):
