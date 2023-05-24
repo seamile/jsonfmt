@@ -164,6 +164,10 @@ name = "sport"
 
 ### 5. Convert between JSON, TOML and YAML formats.
 
+<strong style="color: red">Note this!</strong>
+The `null` value is invalid in TOML.
+Therefore, any null values in JSON or YAML will be removed when converting to TOML.
+
 ```shell
 # json to yaml
 $ jsonfmt -f yaml test/example.json
