@@ -2,15 +2,17 @@
 '''JSON Format Tool'''
 
 import json
-from sys import stdin, stdout, stderr, exit
+import toml
+import yaml
 from argparse import ArgumentParser
+from functools import partial
+from pygments import highlight
+from pygments.formatters import TerminalFormatter
+from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
+from sys import stdin, stdout, stderr, exit
 from typing import Any, List, IO, Optional, Sequence, Union
 
-from pygments import highlight
-from pygments.lexers import JsonLexer
-from pygments.formatters import TerminalFormatter
-
-__version__ = '0.1.5'
+__version__ = '0.2.0'
 
 
 def print_err(msg: str):
@@ -21,7 +23,7 @@ class JSONPathError(Exception):
     pass
 
 
-class JSONParseError(Exception):
+class ParseError(Exception):
     pass
 
 
@@ -51,14 +53,20 @@ def match_element(py_obj: Any, jpath_components: List[Union[str, int]]) -> Any:
     return py_obj
 
 
-def read_json_to_py(json_fp: IO, jsonpath: str) -> Any:
-    '''read json obj from IO and match sub-element by jsonpath'''
-    # parse json object to python object
-    try:
-        py_obj = json.load(json_fp)
-    except (json.JSONDecodeError, UnicodeDecodeError) as err:
-        print_err(f"no json object in `{json_fp.name}`")
-        raise JSONParseError from err
+def parse_to_pyobj(input_fp: IO, jsonpath: str) -> Any:
+    '''read json, toml or yaml from IO and then match sub-element by jsonpath'''
+    # parse json, toml or yaml to python object
+    obj_text = input_fp.read()
+    yaml_load = partial(yaml.load, Loader=yaml.Loader)
+    for fn_loads in [json.loads, toml.loads, yaml_load]:
+        try:
+            py_obj = fn_loads(obj_text)
+            break
+        except Exception:
+            continue
+    else:
+        print_err(f"no json, toml or yaml object in `{input_fp.name}`")
+        raise ParseError
 
     # parse jsonpath and match the sub-element of py_obj
     jpath_components = parse_jsonpath(jsonpath)
@@ -66,11 +74,11 @@ def read_json_to_py(json_fp: IO, jsonpath: str) -> Any:
         return match_element(py_obj, jpath_components)
     except JSONPathError as err:
         print_err(f'{err}')
-        raise JSONParseError from err
+        raise ParseError from err
 
 
-def output(py_obj: Any, compact: bool, escape: bool, indent: int,
-           output_fp: IO = stdout):
+def output_json(py_obj: Any, output_fp: IO, compact: bool,
+                escape: bool, indent: int):
     '''output formated json to file or stdout'''
     if output_fp.fileno() > 2:
         output_fp.seek(0)
@@ -94,20 +102,58 @@ def output(py_obj: Any, compact: bool, escape: bool, indent: int,
     output_fp.write(json_text)
 
 
+def output_toml(py_obj: Any, output_fp: IO):
+    '''output formated toml to file or stdout'''
+    if not isinstance(py_obj, dict):
+        print_err('the pyobj must be a Mapping when format to toml')
+        exit(3)
+
+    if output_fp.fileno() > 2:
+        output_fp.seek(0)
+        output_fp.truncate()
+
+    # highlight the toml code when output to TTY divice
+    if output_fp.isatty():
+        toml_text = toml.dumps(py_obj)
+        highlight_toml = highlight(toml_text, TOMLLexer(), TerminalFormatter())
+        output_fp.write(highlight_toml)
+    else:
+        toml.dump(py_obj, output_fp)
+
+
+def output_yaml(py_obj: Any, output_fp: IO, escape: bool, indent: int):
+    '''output formated yaml to file or stdout'''
+    if output_fp.fileno() > 2:
+        output_fp.seek(0)
+        output_fp.truncate()
+
+    # highlight the yaml code when output to TTY divice
+    if output_fp.isatty():
+        yaml_text = yaml.safe_dump(py_obj, allow_unicode=not escape,
+                                   indent=indent, sort_keys=True)
+        highlight_yaml = highlight(yaml_text, YamlLexer(), TerminalFormatter())
+        output_fp.write(highlight_yaml)
+    else:
+        yaml.safe_dump(py_obj, output_fp, allow_unicode=not escape,
+                       indent=indent, sort_keys=True)
+
+
 def parse_cmdline_args(args: Optional[Sequence[str]] = None):
     parser = ArgumentParser('jsonfmt')
-    parser.add_argument('-c', dest='compression', action='store_true',
-                        help='compression the json object in files or stdin')
+    parser.add_argument('-c', dest='compact', action='store_true',
+                        help='compact the json object to a single line')
     parser.add_argument('-e', dest='escape', action='store_true',
                         help='escape non-ASCII characters')
-    parser.add_argument('-i', dest='indent', type=int, default=4,
+    parser.add_argument('-f', dest='format', choices=['json', 'toml', 'yaml'],
+                        default='json', help='the format to output (default: %(default)s)')
+    parser.add_argument('-i', dest='indent', type=int, default=2,
                         help='number of spaces to use for indentation (default: %(default)s)')
     parser.add_argument('-O', dest='overwrite', action='store_true',
-                        help='overwrite the formated json object to original file')
+                        help='overwrite the formated text to original file')
     parser.add_argument('-p', dest='jsonpath', type=str, default='',
-                        help='output part of json object via jsonpath')
-    parser.add_argument(dest='json_files', nargs='*',
-                        help='the json files that will be processed')
+                        help='output part of the object via jsonpath')
+    parser.add_argument(dest='files', nargs='*',
+                        help='the files that will be processed')
     parser.add_argument('-v', dest='version', action='version',
                         version=__version__, help="show the version")
     return parser.parse_args(args)
@@ -116,29 +162,36 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
 def main():
     args = parse_cmdline_args()
 
-    if args.json_files:
-        for j_file in args.json_files:
+    # match the specified output function
+    fn_output = {
+        'json': partial(output_json, compact=args.compact,
+                        escape=args.escape, indent=args.indent),
+        'yaml': partial(output_yaml, escape=args.escape, indent=args.indent),
+        'toml': output_toml,
+    }[args.format]
+
+    if args.files:
+        for file in args.files:
             try:
-                # read json from file
-                with open(j_file, 'r+') as json_fp:
+                # read from file
+                with open(file, 'r+') as input_fp:
                     try:
-                        py_obj = read_json_to_py(json_fp, args.jsonpath)
-                    except JSONParseError:
+                        py_obj = parse_to_pyobj(input_fp, args.jsonpath)
+                    except ParseError:
                         exit(1)
                     else:
-                        output_fp = json_fp if args.overwrite else stdout
-                        output(py_obj, args.compression, args.escape,
-                               args.indent, output_fp)
+                        output_fp = input_fp if args.overwrite else stdout
+                        fn_output(py_obj, output_fp)
             except FileNotFoundError:
-                print_err(f'no such file `{j_file}`')
+                print_err(f'no such file `{file}`')
     else:
-        # read json from stdin
+        # read from stdin
         try:
-            py_obj = read_json_to_py(stdin, args.jsonpath)
-        except JSONParseError:
-            exit(1)
+            py_obj = parse_to_pyobj(stdin, args.jsonpath)
+        except ParseError:
+            exit(2)
         else:
-            output(py_obj, args.compression, args.escape, args.indent, stdout)
+            fn_output(py_obj, stdout)
 
 
 if __name__ == "__main__":
