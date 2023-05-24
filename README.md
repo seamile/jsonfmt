@@ -10,9 +10,12 @@
 
 It has the following features:
 
-1. Print the JSON object with **hightlight** and **pretty format** from files or stdin.
-2. Minimize the JSON object to a single line.
-3. Output part of a large JSON object via jsonpath.
+- [Print JSON with **hightlight** and **pretty format** from files or stdin.](#1-pretty-print-json-object)
+- [Minimize JSON to a single line.](#2-minimize-the-json-object)
+- [Output part of a large JSON via jsonpath.](#3-use-jsonpath-to-match-part-of-the-object)
+- [Format JSON to TOML or YAML](#4-format-json-to-toml-or-yaml)
+- [Convert between other formats](#5-convert-between-json-toml-and-yaml-formats)
+
 
 ## Install
 
@@ -20,162 +23,168 @@ It has the following features:
 $ pip install jsonfmt
 ```
 
+
 ## Usage
 
 ```shell
-$ jsonfmt [-h] [-c] [-O] [-p JSONPATH] [json_files ...]
+$ jsonfmt [Options] [Files ...]
 ```
 
-- positional arguments:
+- Positional arguments:
 
-    - `json_files`   the json files that will be processed
+    - `files`: the files that will be processed
 
-- options:
-
-    - `-h, --help`: show this help message and exit.
-    - `-c`: compact the json object to a single line.
-    - `-e`: escape non-ASCII characters.
-    - `-i INDENT`: number of spaces to use for indentation. (default: 4)
-    - `-O`: overwrite to the json file.
-    - `-p JSONPATH`: output part of JSON object via jsonpath.
-    - `-v`: show the version.
+- Options:
+  - `-h, --help`: show this help message and exit
+  - `-c`: compact the json object to a single line
+  - `-e`: escape non-ASCII characters
+  - `-f {json,toml,yaml}`: the format to output (default: json)
+  - `-i INDENT`: number of spaces to use for indentation (default: 2)
+  - `-O`: overwrite the formated text to original file
+  - `-p JSONPATH`: output part of the object via jsonpath
+  - `-v`: show the version
 
 
 ## Example
 
-In the file example.json there is a compressed JSON object.
-
-### 1. Pretty print from json file.
-
-```shell
-$ jsonfmt example.json
+There are some test data in folder `test`:
+```
+test/
+|- example.json
+|- example.toml
+|- example.yaml
 ```
 
-Output:
-```json
-{
-    "age": 23,
-    "gender": "纯爷们",
-    "history": [
-        {
-            "action": "eat",
-            "date": "2021-03-02",
-            "items": [
-                {
-                    "calorie": 294.9,
-                    "name": "hamburger"
-                },
-                {
-                    "calorie": 266,
-                    "name": "pizza"
-                }
-            ]
-        },
-        {
-            "action": "drink",
-            "date": "2022-11-01",
-            "items": [
-                {
-                    "calorie": 37.5,
-                    "name": "Coca Cola"
-                },
-                {
-                    "calorie": 54.5,
-                    "name": "juice"
-                }
-            ]
-        },
-        {
-            "action": "sport",
-            "date": "2023-04-27",
-            "items": [
-                {
-                    "calorie": -375,
-                    "name": "running"
-                },
-                {
-                    "calorie": -350,
-                    "name": "swimming"
-                }
-            ]
-        }
-    ],
-    "name": "Bob"
-}
-```
+### 1. Pretty print JSON object.
 
-### 2. Format a JSON object from stdin via pipeline.
-
-```shell
-$ curl https://raw.githubusercontent.com/seamile/jsonfmt/main/example.json | jsonfmt
-```
-
-Output: Ditto.
-
-
-### 3. Minimize the JSON object.
-
-```shell
-$ echo '{
-    "name": "alex",
-    "age": 21,
-    "items": ["pen", "ruler", "phone"]
-}' | jsonfmt -c
-```
-
-Output:
-```json
-{"age":21,"items":["pen","ruler","phone"],"name":"alex"}
-```
-
-### 4. Use jsonpath to match part of a JSON object.
-
-**jsonfmt** uses a simplified jsonpath syntax.
-
-- It matches JSON objects starting from the root node.
-- You can use keys to match dictionaries and indexes to match lists, and use `/` to separate different levels.
+- read from file
 
     ```shell
-    $ jsonfmt -p 'history/0/date' example.json
+    $ jsonfmt test/example.json
     ```
 
     Output:
     ```json
-    "2021-03-02"
+    {
+        "actions": [
+            {
+            "calorie": 294.9,
+            "date": "2021-03-02",
+            "name": "eat"
+            },
+            {
+            "calorie": -375,
+            "date": "2023-04-27",
+            "name": "sport"
+            }
+        ],
+        "age": 23,
+        "gender": "纯爷们",
+        "money": 3.1415926,
+        "name": "Bob"
+    }
+    ```
+
+- read from stdin
+
+    ```shell
+    $ cat test/example.json | jsonfmt
+    ```
+
+    Output: Ditto.
+
+### 2. Minimize the JSON object.
+
+```shell
+$ echo '{ "name": "alex", "age": 21, "items": ["pen", "phone"] }' | jsonfmt -c
+```
+
+Output:
+```json
+{"age":21,"items":["pen","phone"],"name":"alex"}
+```
+
+### 3. Use jsonpath to match part of the object.
+
+**jsonfmt** uses a simplified jsonpath syntax.
+
+- It matches JSON objects starting from the root node.
+
+- You can use keys to match dictionaries and indexes to match lists, and use `/` to separate different levels.
+
+    ```shell
+    $ jsonfmt -p 'actions/0' test/example.json
+    ```
+
+    Output:
+    ```json
+    {
+        "calorie": 294.9,
+        "date": "2021-03-02",
+        "name": "eat"
+    }
     ```
 
 - If you want to match all items in a list, just use `*` to match.
 
     ```shell
-    $ jsonfmt -p 'history/*/items/*/name' example.json
+    $ jsonfmt -p 'actions/*/name' test/example.json
     ```
 
     Output:
     ```json
     [
-        [
-            "hamburger",
-            "pizza"
-        ],
-        [
-            "Coca Cola",
-            "juice"
-        ],
-        [
-            "running",
-            "swimming"
-        ]
+        "eat",
+        "sport"
     ]
     ```
 
-### 5. You can use the `-O` parameter to overwrite the file with the result.
+### 4. Format JSON to TOML or YAML.
 
 ```shell
-$ jsonfmt -O example.json
+$ jsonfmt -f toml test/example.json
 ```
 
-### 6. To output the result to a new file, you can use the redirect symbol `>`.
+Output:
+```toml
+age = 23
+gender = "纯爷们"
+money = 3.1415926
+name = "Bob"
+[[actions]]
+calorie = 294.9
+date = "2021-03-02"
+name = "eat"
+
+[[actions]]
+calorie = -375
+date = "2023-04-27"
+name = "sport"
+```
+
+### 5. Convert between JSON, TOML and YAML formats.
 
 ```shell
-$ jsonfmt example.json > formatted.json
+# json to yaml
+$ jsonfmt -f yaml test/example.json
+
+# yaml to toml
+$ jsonfmt -f toml test/example.yaml
+
+# toml to json
+$ jsonfmt -f json test/example.toml
+```
+
+### 6. Other usages
+
+- use the `-O` parameter to overwrite the file with the result.
+
+```shell
+$ jsonfmt -O test/example.json
+```
+
+- write the result to a new file (use symbol `>`).
+
+```shell
+$ jsonfmt test/example.json > formatted.json
 ```

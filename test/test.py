@@ -191,7 +191,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             indent=2,
             overwrite=False,
             jsonpath='',
-            json_files=[]
+            files=[]
         )
         actual_args = jsonfmt.parse_cmdline_args([])
         self.assertEqual(actual_args, default_args)
@@ -214,7 +214,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             indent=4,
             overwrite=True,
             jsonpath='path/to/json',
-            json_files=['file1.json', 'file2.json']
+            files=['file1.json', 'file2.json']
         )
 
         actual_args = jsonfmt.parse_cmdline_args(args)

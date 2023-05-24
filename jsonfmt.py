@@ -149,11 +149,11 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
     parser.add_argument('-i', dest='indent', type=int, default=2,
                         help='number of spaces to use for indentation (default: %(default)s)')
     parser.add_argument('-O', dest='overwrite', action='store_true',
-                        help='overwrite the formated json object to original file')
+                        help='overwrite the formated text to original file')
     parser.add_argument('-p', dest='jsonpath', type=str, default='',
-                        help='output part of json object via jsonpath')
-    parser.add_argument(dest='json_files', nargs='*',
-                        help='the json files that will be processed')
+                        help='output part of the object via jsonpath')
+    parser.add_argument(dest='files', nargs='*',
+                        help='the files that will be processed')
     parser.add_argument('-v', dest='version', action='version',
                         version=__version__, help="show the version")
     return parser.parse_args(args)
@@ -170,11 +170,11 @@ def main():
         'toml': output_toml,
     }[args.format]
 
-    if args.json_files:
-        for j_file in args.json_files:
+    if args.files:
+        for file in args.files:
             try:
                 # read from file
-                with open(j_file, 'r+') as input_fp:
+                with open(file, 'r+') as input_fp:
                     try:
                         py_obj = parse_to_pyobj(input_fp, args.jsonpath)
                     except ParseError:
@@ -183,7 +183,7 @@ def main():
                         output_fp = input_fp if args.overwrite else stdout
                         fn_output(py_obj, output_fp)
             except FileNotFoundError:
-                print_err(f'no such file `{j_file}`')
+                print_err(f'no such file `{file}`')
     else:
         # read from stdin
         try:
