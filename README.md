@@ -142,7 +142,7 @@ Output:
 ### 4. Format JSON to TOML or YAML.
 
 ```shell
-$ jsonfmt -f toml test/example.json
+$ jsonfmt test/example.json -f toml
 ```
 
 Output:
@@ -164,19 +164,19 @@ name = "sport"
 
 ### 5. Convert between JSON, TOML and YAML formats.
 
-<strong style="color: red">Note this!</strong>
+<div style="color: red"><strong>Note this!</strong></div>
 The `null` value is invalid in TOML.
 Therefore, any null values in JSON or YAML will be removed when converting to TOML.
 
 ```shell
 # json to yaml
-$ jsonfmt -f yaml test/example.json
+$ jsonfmt test/example.json -f yaml
 
 # yaml to toml
-$ jsonfmt -f toml test/example.yaml
+$ jsonfmt test/example.yaml -f toml
 
 # toml to json
-$ jsonfmt -f json test/example.toml
+$ jsonfmt test/example.toml -f json
 ```
 
 ### 6. Other usages

@@ -13,6 +13,7 @@ keywords = ["json", "formatter", "pretty-print", "highlight", "jsonpath"]
 authors = [{name = "Seamile", email = "lanhuermao@gmail.com"}]
 dependencies = [
     "Pygments >= 2.13.0",
+    "pyperclip >= 1.8.2",
     "pyyaml >= 6.0",
     "toml >= 0.10.2"
 ]

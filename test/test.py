@@ -3,6 +3,7 @@ import os
 import sys
 import tempfile
 import unittest
+import pyperclip
 from argparse import Namespace
 from functools import partial
 from io import StringIO
@@ -134,14 +135,16 @@ class JSONFormatToolTestCase(unittest.TestCase):
         # test output json to file (temp file)
         with_indent_output = '{\n "age": 30,\n "name": "\\u7ea6\\u7ff0"\n}\n'
         with tempfile.NamedTemporaryFile(mode='r+') as tmpfile:
-            jsonfmt.output_json(py_obj, tmpfile, False, True, 1)
+            jsonfmt.output_json(py_obj, tmpfile, cp2clip=False,
+                                compact=False, escape=True, indent=1)
             tmpfile.seek(0)
             output_str = tmpfile.read()
             self.assertEqual(output_str, with_indent_output)
 
         # test output json to stdout (mock)
         compact_and_colored = color('{"age":30,"name":"约翰"}', 'json')
-        jsonfmt.output_json(py_obj, jsonfmt.stdout, True, False, 4)
+        jsonfmt.output_json(py_obj, jsonfmt.stdout, cp2clip=False,
+                            compact=True, escape=False, indent=4)
         self.assertEqual(jsonfmt.stdout.read(), compact_and_colored)
 
     @patch.multiple(jsonfmt, stdout=FakeStdOut(), stderr=FakeStdErr())
@@ -152,18 +155,18 @@ class JSONFormatToolTestCase(unittest.TestCase):
 
         # test output toml to file (temp file)
         with tempfile.NamedTemporaryFile(mode='r+') as tmpfile:
-            jsonfmt.output_toml(py_obj, tmpfile)
+            jsonfmt.output_toml(py_obj, tmpfile, cp2clip=False)
             tmpfile.seek(0)
             self.assertIn(tmpfile.read(), expected_outputs)
 
         # test output toml to stdout (mock)
         colored_outputs = [color(o, 'toml') for o in expected_outputs]
-        jsonfmt.output_toml(py_obj, jsonfmt.stdout)
+        jsonfmt.output_toml(py_obj, jsonfmt.stdout, cp2clip=False)
         self.assertIn(jsonfmt.stdout.read(), colored_outputs)
 
         # test SystemExit when using non-mapping
         with self.assertRaises(SystemExit) as raise_ctx:
-            jsonfmt.output_toml(['foo', 'bar'], jsonfmt.stdout)
+            jsonfmt.output_toml(['foo', 'bar'], jsonfmt.stdout, cp2clip=False)
             self.assertEqual(raise_ctx.exception.code, 3)
 
     @patch('jsonfmt.stdout', FakeStdOut())
@@ -173,19 +176,22 @@ class JSONFormatToolTestCase(unittest.TestCase):
         # test output yaml to file (temp file)
         expected_output = 'age: 30\nname: "\\u7EA6\\u7FF0"\n'
         with tempfile.NamedTemporaryFile(mode='r+') as tmpfile:
-            jsonfmt.output_yaml(py_obj, tmpfile, True, 2)
+            jsonfmt.output_yaml(py_obj, tmpfile, cp2clip=False,
+                                escape=True, indent=2)
             tmpfile.seek(0)
             self.assertEqual(tmpfile.read(), expected_output)
 
         # jsonfmt.output to stdout (mock)
         colored_output = color('age: 30\nname: 约翰\n', 'yaml')
-        jsonfmt.output_yaml(py_obj, jsonfmt.stdout, False, 2)
+        jsonfmt.output_yaml(py_obj, jsonfmt.stdout, cp2clip=False,
+                            escape=False, indent=2)
         self.assertEqual(jsonfmt.stdout.read(), colored_output)
 
     def test_parse_cmdline_args(self):
         # test default parameters
         default_args = Namespace(
             compact=False,
+            cp2clip=False,
             escape=False,
             format='json',
             indent=2,
@@ -199,6 +205,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
         # test specified parameters
         args = [
             '-c',
+            '-C',
             '-e',
             '-f', 'toml',
             '-i', '4',
@@ -209,6 +216,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
         ]
         expected_args = Namespace(
             compact=True,
+            cp2clip=True,
             escape=True,
             format='toml',
             indent=4,
@@ -268,6 +276,33 @@ class JSONFormatToolTestCase(unittest.TestCase):
         colored_output = color(JSON_TEXT, 'json')
         jsonfmt.main()
         self.assertEqual(jsonfmt.stdout.read(), colored_output)
+
+    @patch.multiple(sys, argv=['jsonfmt', '-cO', f'{BASE_DIR}/test/example.toml'])
+    def test_overwrite_to_original_file(self):
+        try:
+            jsonfmt.main()
+            with open(f'{BASE_DIR}/test/example.toml') as toml_fp:
+                new_content = toml_fp.read()
+            self.assertEqual(new_content, JSON_TEXT)
+        finally:
+            with open(f'{BASE_DIR}/test/example.toml', 'w') as toml_fp:
+                toml_fp.write(TOML_TEXT)
+
+    def test_copy_to_clipboard(self):
+        with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.toml', '-Cc']):
+            jsonfmt.main()
+            copied_text = pyperclip.paste().strip()
+            self.assertEqual(copied_text, JSON_TEXT.strip())
+
+        with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.json', '-Cf', 'toml']):
+            jsonfmt.main()
+            copied_text = pyperclip.paste().strip()
+            self.assertEqual(copied_text, TOML_TEXT.strip())
+
+        with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.json', '-Cf', 'yaml']):
+            jsonfmt.main()
+            copied_text = pyperclip.paste().strip()
+            self.assertEqual(copied_text, YAML_TEXT.strip())
 
 
 if __name__ == '__main__':
