@@ -36,20 +36,22 @@ $ jsonfmt [options] [files ...]
     - `files`: the files that will be processed
 
 - Options:
-  - `-h, --help`: show this help message and exit
-  - `-c`: compact the json object to a single line
-  - `-C`: copy the result to clipboard
-  - `-e`: escape non-ASCII characters
-  - `-f {json,toml,yaml}`: the format to output (default: json)
-  - `-i INDENT`: number of spaces for indentation (default: 2)
-  - `-O`: overwrite the formated text to original file
-  - `-p JSONPATH`: output part of the object via jsonpath
-  - `-v`: show the version
+
+    - `-h, --help`: show this help message and exit
+    - `-c`: compact the json object to a single line
+    - `-C`: copy the result to clipboard
+    - `-e`: escape non-ASCII characters
+    - `-f {json,toml,yaml}`: the format to output (default: json)
+    - `-i INDENT`: number of spaces for indentation (default: 2)
+    - `-O`: overwrite the formated text to original file
+    - `-p JSONPATH`: output part of the object via jsonpath
+    - `-v`: show the version
 
 
 ## Example
 
 There are some test data in folder `test`:
+
 ```
 test/
 |- example.json
@@ -67,6 +69,7 @@ test/
     ```
 
     *Output:*
+
     ```json
     {
         "actions": [
@@ -110,6 +113,7 @@ $ echo '{
 ```
 
 *Output:*
+
 ```json
 {"age":21,"items":["pen","phone"],"name":"alex"}
 ```
@@ -127,6 +131,7 @@ $ echo '{
     ```
 
     *Output:*
+
     ```json
     {
         "calorie": 294.9,
@@ -142,6 +147,7 @@ $ echo '{
     ```
 
     *Output:*
+
     ```json
     [
         "eat",
@@ -156,6 +162,7 @@ $ jsonfmt test/example.json -f toml
 ```
 
 *Output:*
+
 ```toml
 age = 23
 gender = "纯爷们"
@@ -174,9 +181,8 @@ name = "sport"
 
 ### 5. Convert between JSON, TOML and YAML formats.
 
-<div style="color: red"><strong>Note this!</strong></div>
-The `null` value is invalid in TOML.
-Therefore, any null values in JSON or YAML will be removed when converting to TOML.
+<div style="color: orange"><strong>Note this:</strong></div>
+The `null` value is invalid in TOML. Therefore, any null values in JSON or YAML will be removed when converting to TOML.
 
 ```shell
 # json to yaml
@@ -198,9 +204,12 @@ $ jsonfmt -C test/example.json
 jsonfmt: result copied to clipboard.
 ```
 
-You can then use <kbd>ctrl</kbd>+<kbd>v</kbd> or <kbd>cmd</kbd>+<kbd>v</kbd> to paste the result anywhere on your computer.
+Once you've done the above, you can then use <kbd>ctrl</kbd>+<kbd>v</kbd> or <kbd>cmd</kbd>+<kbd>v</kbd> to paste the result anywhere on your computer.
 
-But when you process multiple files, only the last result is kept in the clipboard.
+<div style="color: orange"><strong>Note these:</strong></div>
+
+- When you specify the `-C` option, any output destination other than the clipboard will be ignored.
+- When you process multiple files, only the last result will be preserved in the clipboard.
 
 ### 7. Other usages
 

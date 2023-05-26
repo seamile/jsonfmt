@@ -32,6 +32,12 @@ class ParseError(Exception):
     pass
 
 
+def is_clipboard_available() -> bool:
+    copy_fn, paste_fn = pyperclip.determine_clipboard()
+    return copy_fn.__class__.__name__ != 'ClipboardUnavailable' \
+        and paste_fn.__class__.__name__ != 'ClipboardUnavailable'
+
+
 def parse_jsonpath(jsonpath: str) -> List[Union[str, int]]:
     '''parse the jsonpath into a list of pathname components'''
     if jsonpath := jsonpath.strip().strip('/'):
@@ -175,12 +181,17 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
 def main():
     args = parse_cmdline_args()
 
+    # check if the clipboard is available
+    cp2clip = args.cp2clip and is_clipboard_available()
+    if args.cp2clip and not cp2clip:
+        print_err('clipboard unavailable')
+
     # match the specified output function
     fn_output = {
-        'json': partial(output_json, cp2clip=args.cp2clip, compact=args.compact,
+        'json': partial(output_json, cp2clip=cp2clip, compact=args.compact,
                         escape=args.escape, indent=args.indent),
-        'yaml': partial(output_yaml, cp2clip=args.cp2clip, escape=args.escape, indent=args.indent),
-        'toml': partial(output_toml, cp2clip=args.cp2clip),
+        'yaml': partial(output_yaml, cp2clip=cp2clip, escape=args.escape, indent=args.indent),
+        'toml': partial(output_toml, cp2clip=cp2clip),
     }[args.format]
 
     if args.files:
