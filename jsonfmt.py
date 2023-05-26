@@ -13,7 +13,7 @@ from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 from sys import stdin, stdout, stderr, exit
 from typing import Any, List, IO, Optional, Sequence, Union
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 
 def print_inf(msg: str):

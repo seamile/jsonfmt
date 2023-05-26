@@ -13,8 +13,8 @@ It has the following features:
 - [Print JSON with **hightlight** and **pretty format** from files or stdin.](#1-pretty-print-json-object)
 - [Minimize JSON to a single line.](#2-minimize-the-json-object)
 - [Output part of a large JSON via jsonpath.](#3-use-jsonpath-to-match-part-of-the-object)
-- [Format JSON to TOML or YAML](#4-format-json-to-toml-or-yaml)
-- [Convert between other formats](#5-convert-between-json-toml-and-yaml-formats)
+- [Format JSON to TOML or YAML.](#4-format-json-to-toml-or-yaml)
+- [Convert between other formats.](#5-convert-between-json-toml-and-yaml-formats)
 
 
 ## Install
@@ -27,7 +27,7 @@ $ pip install jsonfmt
 ## Usage
 
 ```shell
-$ jsonfmt [Options] [Files ...]
+$ jsonfmt [options] [files ...]
 ```
 
 - Positional arguments:
@@ -37,9 +37,10 @@ $ jsonfmt [Options] [Files ...]
 - Options:
   - `-h, --help`: show this help message and exit
   - `-c`: compact the json object to a single line
+  - `-C`: copy the result to clipboard
   - `-e`: escape non-ASCII characters
   - `-f {json,toml,yaml}`: the format to output (default: json)
-  - `-i INDENT`: number of spaces to use for indentation (default: 2)
+  - `-i INDENT`: number of spaces for indentation (default: 2)
   - `-O`: overwrite the formated text to original file
   - `-p JSONPATH`: output part of the object via jsonpath
   - `-v`: show the version
@@ -60,22 +61,23 @@ test/
 - read from file
 
     ```shell
-    $ jsonfmt test/example.json
+    # format the json with 4-space indentaion
+    $ jsonfmt -i 4 test/example.json
     ```
 
-    Output:
     ```json
+    // Output:
     {
         "actions": [
             {
-            "calorie": 294.9,
-            "date": "2021-03-02",
-            "name": "eat"
+                "calorie": 294.9,
+                "date": "2021-03-02",
+                "name": "eat"
             },
             {
-            "calorie": -375,
-            "date": "2023-04-27",
-            "name": "sport"
+                "calorie": -375,
+                "date": "2023-04-27",
+                "name": "sport"
             }
         ],
         "age": 23,
@@ -88,7 +90,7 @@ test/
 - read from stdin
 
     ```shell
-    $ cat test/example.json | jsonfmt
+    $ cat test/example.json | jsonfmt -i 4
     ```
 
     Output: Ditto.
@@ -96,11 +98,18 @@ test/
 ### 2. Minimize the JSON object.
 
 ```shell
-$ echo '{ "name": "alex", "age": 21, "items": ["pen", "phone"] }' | jsonfmt -c
+$ echo '{
+    "name": "alex",
+    "age": 21,
+    "items": [
+        "pen",
+        "phone"
+    ]
+}' | jsonfmt -c
 ```
 
-Output:
 ```json
+// Output:
 {"age":21,"items":["pen","phone"],"name":"alex"}
 ```
 
@@ -116,8 +125,8 @@ Output:
     $ jsonfmt -p 'actions/0' test/example.json
     ```
 
-    Output:
     ```json
+    // Output:
     {
         "calorie": 294.9,
         "date": "2021-03-02",
@@ -131,8 +140,8 @@ Output:
     $ jsonfmt -p 'actions/*/name' test/example.json
     ```
 
-    Output:
     ```json
+    // Output:
     [
         "eat",
         "sport"
@@ -145,8 +154,8 @@ Output:
 $ jsonfmt test/example.json -f toml
 ```
 
-Output:
 ```toml
+# Output:
 age = 23
 gender = "纯爷们"
 money = 3.1415926
@@ -179,7 +188,20 @@ $ jsonfmt test/example.yaml -f toml
 $ jsonfmt test/example.toml -f json
 ```
 
-### 6. Other usages
+### 6. Copy the result to clipboard.
+
+```shell
+$ jsonfmt -C test/example.json
+
+# Output
+jsonfmt: result copied to clipboard.
+```
+
+You can then use <kbd>ctrl</kbd>+<kbd>v</kbd> or <kbd>cmd</kbd>+<kbd>v</kbd> to paste the result anywhere on your computer.
+
+But when you process multiple files, only the last result is kept in the clipboard.
+
+### 7. Other usages
 
 - use the `-O` parameter to overwrite the file with the result.
 
