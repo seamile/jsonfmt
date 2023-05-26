@@ -42,38 +42,25 @@ def color(text, format):
     return fn(text)
 
 
-class FakeStdIn(StringIO):
-    name = '<stdin>'
-
+class FakeStdStream(StringIO):
     def isatty(self):
         return True
-
-    def fileno(self):
-        return 0
-
-
-class FakeStdOut(StringIO):
-    name = '<stdout>'
-
-    def isatty(self):
-        return True
-
-    def fileno(self):
-        return 1
 
     def read(self):
         self.seek(0)
         return super().read()
 
 
-class FakeStdErr(StringIO):
+class FakeStdIn(FakeStdStream):
+    name = '<stdin>'
+
+
+class FakeStdOut(FakeStdStream):
+    name = '<stdout>'
+
+
+class FakeStdErr(FakeStdStream):
     name = '<stderr>'
-
-    def isatty(self):
-        return True
-
-    def fileno(self):
-        return 2
 
 
 class JSONFormatToolTestCase(unittest.TestCase):
@@ -167,7 +154,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
         # test SystemExit when using non-mapping
         with self.assertRaises(SystemExit) as raise_ctx:
             jsonfmt.output_toml(['foo', 'bar'], jsonfmt.stdout, cp2clip=False)
-            self.assertEqual(raise_ctx.exception.code, 3)
+        self.assertEqual(raise_ctx.exception.code, 3)
 
     @patch('jsonfmt.stdout', FakeStdOut())
     def test_output_yaml(self):
@@ -247,14 +234,14 @@ class JSONFormatToolTestCase(unittest.TestCase):
     def test_main_invalid_file(self):
         with self.assertRaises(SystemExit) as raise_ctx:
             jsonfmt.main()
-            self.assertEqual(raise_ctx.exception.code, 1)
+        self.assertEqual(raise_ctx.exception.code, 1)
 
     @patch.multiple(sys, argv=['jsonfmt', '-f', 'json'])
     @patch.multiple(jsonfmt, stdin=FakeStdIn(']a, b, c]'), stderr=FakeStdErr())
     def test_main_invalid_input(self):
         with self.assertRaises(SystemExit) as raise_ctx:
             jsonfmt.main()
-            self.assertEqual(raise_ctx.exception.code, 2)
+        self.assertEqual(raise_ctx.exception.code, 2)
 
     @patch.multiple(sys, argv=['jsonfmt', '-f', 'toml'])
     @patch.multiple(jsonfmt, stdin=FakeStdIn(JSON_TEXT), stdout=FakeStdOut())
@@ -288,21 +275,29 @@ class JSONFormatToolTestCase(unittest.TestCase):
             with open(f'{BASE_DIR}/test/example.toml', 'w') as toml_fp:
                 toml_fp.write(TOML_TEXT)
 
+    @patch.multiple(jsonfmt, stdout=FakeStdOut(), stderr=FakeStdErr())
     def test_copy_to_clipboard(self):
-        with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.toml', '-Cc']):
-            jsonfmt.main()
-            copied_text = pyperclip.paste().strip()
-            self.assertEqual(copied_text, JSON_TEXT.strip())
+        if jsonfmt.is_clipboard_available():
+            with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.toml', '-Cc']):
+                jsonfmt.main()
+                copied_text = pyperclip.paste().strip()
+                self.assertEqual(copied_text, JSON_TEXT.strip())
 
-        with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.json', '-Cf', 'toml']):
-            jsonfmt.main()
-            copied_text = pyperclip.paste().strip()
-            self.assertEqual(copied_text, TOML_TEXT.strip())
+            with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.json', '-Cf', 'toml']):
+                jsonfmt.main()
+                copied_text = pyperclip.paste().strip()
+                self.assertEqual(copied_text, TOML_TEXT.strip())
 
-        with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.json', '-Cf', 'yaml']):
-            jsonfmt.main()
-            copied_text = pyperclip.paste().strip()
-            self.assertEqual(copied_text, YAML_TEXT.strip())
+            with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.json', '-Cf', 'yaml']):
+                jsonfmt.main()
+                copied_text = pyperclip.paste().strip()
+                self.assertEqual(copied_text, YAML_TEXT.strip())
+        else:
+            errmsg = '\033[1;91mjsonfmt:\033[0m \033[0;91mclipboard unavailable\033[0m\n'
+            with patch.multiple(sys, argv=['jsonfmt', '-C']), \
+                    patch.multiple(jsonfmt, stdin=FakeStdIn('["a", "b"]')):
+                jsonfmt.main()
+                self.assertEqual(jsonfmt.stderr.read(), errmsg)
 
 
 if __name__ == '__main__':

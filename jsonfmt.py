@@ -13,11 +13,11 @@ from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 from sys import stdin, stdout, stderr, exit
 from typing import Any, List, IO, Optional, Sequence, Union
 
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
 
 def print_inf(msg: str):
-    print(f'\033[1;94mjsonfmt:\033[0m \033[0;94m{msg}\033[0m')
+    print(f'\033[1;94mjsonfmt:\033[0m \033[0;94m{msg}\033[0m', file=stdout)
 
 
 def print_err(msg: str):
