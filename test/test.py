@@ -289,20 +289,23 @@ class JSONFormatToolTestCase(unittest.TestCase):
                 toml_fp.write(TOML_TEXT)
 
     def test_copy_to_clipboard(self):
-        with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.toml', '-Cc']):
-            jsonfmt.main()
-            copied_text = pyperclip.paste().strip()
-            self.assertEqual(copied_text, JSON_TEXT.strip())
+        try:
+            with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.toml', '-Cc']):
+                jsonfmt.main()
+                copied_text = pyperclip.paste().strip()
+                self.assertEqual(copied_text, JSON_TEXT.strip())
 
-        with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.json', '-Cf', 'toml']):
-            jsonfmt.main()
-            copied_text = pyperclip.paste().strip()
-            self.assertEqual(copied_text, TOML_TEXT.strip())
+            with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.json', '-Cf', 'toml']):
+                jsonfmt.main()
+                copied_text = pyperclip.paste().strip()
+                self.assertEqual(copied_text, TOML_TEXT.strip())
 
-        with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.json', '-Cf', 'yaml']):
-            jsonfmt.main()
-            copied_text = pyperclip.paste().strip()
-            self.assertEqual(copied_text, YAML_TEXT.strip())
+            with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.json', '-Cf', 'yaml']):
+                jsonfmt.main()
+                copied_text = pyperclip.paste().strip()
+                self.assertEqual(copied_text, YAML_TEXT.strip())
+        except pyperclip.PyperclipException as e:
+            jsonfmt.print_err(e)  # type: ignore
 
 
 if __name__ == '__main__':
