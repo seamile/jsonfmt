@@ -10,11 +10,12 @@
 
 It has the following features:
 
-- [Print JSON with **hightlight** and **pretty format** from files or stdin.](#1-pretty-print-json-object)
-- [Minimize JSON to a single line.](#2-minimize-the-json-object)
-- [Output part of a large JSON via jsonpath.](#3-use-jsonpath-to-match-part-of-the-object)
-- [Format JSON to TOML or YAML.](#4-format-json-to-toml-or-yaml)
-- [Convert between other formats.](#5-convert-between-json-toml-and-yaml-formats)
+1. [Print JSON with **hightlight** and **pretty format** from files or stdin.](#1-pretty-print-json-object)
+2. [Minimize JSON to a single line.](#2-minimize-the-json-object)
+3. [Output part of a large JSON via jsonpath.](#3-use-jsonpath-to-match-part-of-the-object)
+4. [Format JSON to TOML or YAML.](#4-format-json-to-toml-or-yaml)
+5. [Convert between other formats.](#5-convert-between-json-toml-and-yaml-formats)
+6. [Copy the result to clipboard.](#6-copy-the-result-to-clipboard)
 
 
 ## Install
@@ -65,8 +66,8 @@ test/
     $ jsonfmt -i 4 test/example.json
     ```
 
+    *Output:*
     ```json
-    // Output:
     {
         "actions": [
             {
@@ -93,7 +94,7 @@ test/
     $ cat test/example.json | jsonfmt -i 4
     ```
 
-    Output: Ditto.
+    *Output*: Ditto.
 
 ### 2. Minimize the JSON object.
 
@@ -108,8 +109,8 @@ $ echo '{
 }' | jsonfmt -c
 ```
 
+*Output:*
 ```json
-// Output:
 {"age":21,"items":["pen","phone"],"name":"alex"}
 ```
 
@@ -125,8 +126,8 @@ $ echo '{
     $ jsonfmt -p 'actions/0' test/example.json
     ```
 
+    *Output:*
     ```json
-    // Output:
     {
         "calorie": 294.9,
         "date": "2021-03-02",
@@ -140,8 +141,8 @@ $ echo '{
     $ jsonfmt -p 'actions/*/name' test/example.json
     ```
 
+    *Output:*
     ```json
-    // Output:
     [
         "eat",
         "sport"
@@ -154,8 +155,8 @@ $ echo '{
 $ jsonfmt test/example.json -f toml
 ```
 
+*Output:*
 ```toml
-# Output:
 age = 23
 gender = "纯爷们"
 money = 3.1415926
