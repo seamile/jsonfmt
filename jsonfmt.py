@@ -13,7 +13,7 @@ from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 from sys import stdin, stdout, stderr, exit
 from typing import Any, List, IO, Optional, Sequence, Union
 
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 
 
 def print_inf(msg: str):
@@ -88,8 +88,8 @@ def parse_to_pyobj(input_fp: IO, jsonpath: str) -> Any:
         raise ParseError from err
 
 
-def output_json(py_obj: Any, output_fp: IO, *, cp2clip: bool, compact: bool,
-                escape: bool, indent: int):
+def output_json(py_obj: Any, output_fp: IO, *,
+                cp2clip: bool, compact: bool, escape: bool, indent: int):
     '''output formated json to file or stdout'''
     if compact:
         json_text = json.dumps(py_obj, ensure_ascii=escape, sort_keys=True,
@@ -136,7 +136,8 @@ def output_toml(py_obj: Any, output_fp: IO, *, cp2clip: bool):
     output_fp.write(toml_text)
 
 
-def output_yaml(py_obj: Any, output_fp: IO, *, cp2clip: bool, escape: bool, indent: int):
+def output_yaml(py_obj: Any, output_fp: IO, *,
+                cp2clip: bool, escape: bool, indent: int):
     '''output formated yaml to file or stdout'''
     yaml_text = yaml.safe_dump(py_obj, allow_unicode=not escape, indent=indent,
                                sort_keys=True)
@@ -190,7 +191,8 @@ def main():
     fn_output = {
         'json': partial(output_json, cp2clip=cp2clip, compact=args.compact,
                         escape=args.escape, indent=args.indent),
-        'yaml': partial(output_yaml, cp2clip=cp2clip, escape=args.escape, indent=args.indent),
+        'yaml': partial(output_yaml, cp2clip=cp2clip, escape=args.escape,
+                        indent=args.indent),
         'toml': partial(output_toml, cp2clip=cp2clip),
     }[args.format]
 
