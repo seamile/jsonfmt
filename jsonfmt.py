@@ -7,25 +7,22 @@ import toml
 import yaml
 from argparse import ArgumentParser
 from functools import partial
+from jsonpath import jsonpath
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 from sys import stdin, stdout, stderr, exit
-from typing import Any, List, IO, Optional, Sequence, Union
+from typing import Any, IO, Optional, Sequence
 
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 
 
-def print_inf(msg: str):
+def print_inf(msg: Any):
     print(f'\033[1;94mjsonfmt:\033[0m \033[0;94m{msg}\033[0m', file=stdout)
 
 
-def print_err(msg: str):
+def print_err(msg: Any):
     print(f'\033[1;91mjsonfmt:\033[0m \033[0;91m{msg}\033[0m', file=stderr)
-
-
-class JSONPathError(Exception):
-    pass
 
 
 class ParseError(Exception):
@@ -38,33 +35,7 @@ def is_clipboard_available() -> bool:
         and paste_fn.__class__.__name__ != 'ClipboardUnavailable'
 
 
-def parse_jsonpath(jsonpath: str) -> List[Union[str, int]]:
-    '''parse the jsonpath into a list of pathname components'''
-    if jsonpath := jsonpath.strip().strip('/'):
-        components = jsonpath.split('/')
-        for i, component in enumerate(components):
-            if component.isdecimal():
-                components[i] = int(component)  # type: ignore
-        return components  # type: ignore
-    else:
-        return []
-
-
-def match_element(py_obj: Any, jpath_components: List[Union[str, int]]) -> Any:
-    for i, component in enumerate(jpath_components):
-        if component == '*' and isinstance(py_obj, list):
-            return [match_element(sub_obj, jpath_components[i + 1:])
-                    for sub_obj in py_obj]
-        else:
-            try:
-                py_obj = py_obj[component]
-            except (IndexError, KeyError, TypeError) as err:
-                raise JSONPathError(f'invalid path node `{component}`') from err
-
-    return py_obj
-
-
-def parse_to_pyobj(input_fp: IO, jsonpath: str) -> Any:
+def parse_to_pyobj(input_fp: IO, jpath: Optional[str]) -> Any:
     '''read json, toml or yaml from IO and then match sub-element by jsonpath'''
     # parse json, toml or yaml to python object
     obj_text = input_fp.read()
@@ -76,20 +47,21 @@ def parse_to_pyobj(input_fp: IO, jsonpath: str) -> Any:
         except Exception:
             continue
     else:
-        print_err(f"no json, toml or yaml object in `{input_fp.name}`")
-        raise ParseError
+        raise ParseError(f"no json, toml or yaml object in `{input_fp.name}`")
 
-    # parse jsonpath and match the sub-element of py_obj
-    jpath_components = parse_jsonpath(jsonpath)
-    try:
-        return match_element(py_obj, jpath_components)
-    except JSONPathError as err:
-        print_err(f'{err}')
-        raise ParseError from err
+    if jpath is None:
+        return py_obj
+    else:
+        # match sub-elements via jsonpath
+        subelements = jsonpath(py_obj, jpath)
+        if subelements is False:
+            raise ParseError('wrong jsonpath')
+        else:
+            return subelements
 
 
-def output_json(py_obj: Any, output_fp: IO, *, cp2clip: bool, compact: bool,
-                escape: bool, indent: int):
+def output_json(py_obj: Any, output_fp: IO, *,
+                cp2clip: bool, compact: bool, escape: bool, indent: int):
     '''output formated json to file or stdout'''
     if compact:
         json_text = json.dumps(py_obj, ensure_ascii=escape, sort_keys=True,
@@ -136,7 +108,8 @@ def output_toml(py_obj: Any, output_fp: IO, *, cp2clip: bool):
     output_fp.write(toml_text)
 
 
-def output_yaml(py_obj: Any, output_fp: IO, *, cp2clip: bool, escape: bool, indent: int):
+def output_yaml(py_obj: Any, output_fp: IO, *,
+                cp2clip: bool, escape: bool, indent: int):
     '''output formated yaml to file or stdout'''
     yaml_text = yaml.safe_dump(py_obj, allow_unicode=not escape, indent=indent,
                                sort_keys=True)
@@ -169,7 +142,7 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
                         help='number of spaces for indentation (default: %(default)s)')
     parser.add_argument('-O', dest='overwrite', action='store_true',
                         help='overwrite the formated text to original file')
-    parser.add_argument('-p', dest='jsonpath', type=str, default='',
+    parser.add_argument('-p', dest='jsonpath', type=str,
                         help='output part of the object via jsonpath')
     parser.add_argument(dest='files', nargs='*',
                         help='the files that will be processed')
@@ -190,7 +163,8 @@ def main():
     fn_output = {
         'json': partial(output_json, cp2clip=cp2clip, compact=args.compact,
                         escape=args.escape, indent=args.indent),
-        'yaml': partial(output_yaml, cp2clip=cp2clip, escape=args.escape, indent=args.indent),
+        'yaml': partial(output_yaml, cp2clip=cp2clip, escape=args.escape,
+                        indent=args.indent),
         'toml': partial(output_toml, cp2clip=cp2clip),
     }[args.format]
 
@@ -201,7 +175,8 @@ def main():
                 with open(file, 'r+') as input_fp:
                     try:
                         py_obj = parse_to_pyobj(input_fp, args.jsonpath)
-                    except ParseError:
+                    except ParseError as err:
+                        print_err(err)
                         exit(1)
                     else:
                         if args.overwrite:
@@ -219,7 +194,8 @@ def main():
         try:
             # read from stdin
             py_obj = parse_to_pyobj(stdin, args.jsonpath)
-        except ParseError:
+        except ParseError as err:
+            print_err(err)
             exit(2)
         else:
             fn_output(py_obj, stdout)

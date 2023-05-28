@@ -67,53 +67,36 @@ class JSONFormatToolTestCase(unittest.TestCase):
     def setUp(self):
         self.py_obj = json.loads(JSON_TEXT)
 
-    def test_parse_jsonpath(self):
-        # test empty jsonpaths
-        expected_components = []
-        for empty_path in ['', '/', '  ', '  /// ']:
-            components = jsonfmt.parse_jsonpath(empty_path)
-            self.assertEqual(components, expected_components)
-
-        # test jsonpath contains key, index and '*'
-        jsonpath = "history/0/items/*/ //name"
-        expected_components = ["history", 0, "items", "*", " ", "", "name"]
-        components = jsonfmt.parse_jsonpath(jsonpath)
-        self.assertEqual(components, expected_components)
-
-    def test_match_element(self):
-        element = jsonfmt.match_element(self.py_obj, ["actions", 0, "calorie"])
-        self.assertEqual(element, 294.9)
-
-        element = jsonfmt.match_element(self.py_obj, ["actions", "*", "name"])
-        self.assertEqual(element, ['eat', 'sport'])
-
-        with self.assertRaises(jsonfmt.JSONPathError):
-            jsonfmt.match_element(self.py_obj, ['not_exist_key'])
-
-        with self.assertRaises(jsonfmt.JSONPathError):
-            jsonfmt.match_element(self.py_obj, ['actions', 7])
+    def test_is_clipboard_available(self):
+        available = jsonfmt.is_clipboard_available()
+        self.assertIsInstance(available, bool)
 
     def test_parse_to_pyobj(self):
-        # normal parameters
         with open(f'{BASE_DIR}/test/example.json') as json_fp:
-            matched_obj = jsonfmt.parse_to_pyobj(json_fp, "actions/*/calorie")
+            # normal parameters
+            matched_obj = jsonfmt.parse_to_pyobj(json_fp, "$.actions[:].calorie")
             self.assertEqual(matched_obj, [294.9, -375])
 
-        # test empty jsonpath
-        with open(f'{BASE_DIR}/test/example.json') as json_fp:
-            matched_obj = jsonfmt.parse_to_pyobj(json_fp, "/")
-            self.assertEqual(matched_obj, self.py_obj)
+            with patch('jsonfmt.stderr', FakeStdErr()):
+                # test empty jsonpath
+                with self.assertRaises(jsonfmt.ParseError):
+                    json_fp.seek(0)
+                    matched_obj = jsonfmt.parse_to_pyobj(json_fp, "")
 
-        with patch('jsonfmt.stderr', FakeStdErr()):
-            # test not exists key
-            with open(f'{BASE_DIR}/test/example.json') as json_fp,\
-                    self.assertRaises(jsonfmt.ParseError):
-                jsonfmt.parse_to_pyobj(json_fp, "not_exist_key")
+                # test not exists key
+                with self.assertRaises(jsonfmt.ParseError):
+                    json_fp.seek(0)
+                    jsonfmt.parse_to_pyobj(json_fp, "$.not_exist_key")
 
-            # test non-json file
-            with open(__file__) as json_fp,\
-                    self.assertRaises(jsonfmt.ParseError):
-                matched_obj = jsonfmt.parse_to_pyobj(json_fp, "actions/*/date")
+                # test index out of range
+                with self.assertRaises(jsonfmt.ParseError):
+                    json_fp.seek(0)
+                    jsonfmt.parse_to_pyobj(json_fp, '$.actions[7]')
+
+        # test non-json file
+        with open(__file__) as json_fp,\
+                self.assertRaises(jsonfmt.ParseError):
+            matched_obj = jsonfmt.parse_to_pyobj(json_fp, "$.actions[0].calorie")
 
     @patch('jsonfmt.stdout', FakeStdOut())
     def test_output_json(self):
@@ -183,7 +166,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             format='json',
             indent=2,
             overwrite=False,
-            jsonpath='',
+            jsonpath=None,
             files=[]
         )
         actual_args = jsonfmt.parse_cmdline_args([])
@@ -215,10 +198,10 @@ class JSONFormatToolTestCase(unittest.TestCase):
         actual_args = jsonfmt.parse_cmdline_args(args)
         self.assertEqual(actual_args, expected_args)
 
-    @patch.multiple(sys, argv=['jsonfmt', '-p', 'name', f'{BASE_DIR}/test/example.json'])
+    @patch.multiple(sys, argv=['jsonfmt', '-i', '4', '-p', '$.name', f'{BASE_DIR}/test/example.json'])
     @patch.multiple(jsonfmt, stdout=FakeStdOut())
     def test_main_with_file(self):
-        expected_output = color('"Bob"', 'json')
+        expected_output = color('[\n    "Bob"\n]', 'json')
         jsonfmt.main()
         self.assertEqual(jsonfmt.stdout.read(), expected_output)
 
@@ -292,12 +275,15 @@ class JSONFormatToolTestCase(unittest.TestCase):
                 jsonfmt.main()
                 copied_text = pyperclip.paste().strip()
                 self.assertEqual(copied_text, YAML_TEXT.strip())
-        else:
-            errmsg = '\033[1;91mjsonfmt:\033[0m \033[0;91mclipboard unavailable\033[0m\n'
-            with patch.multiple(sys, argv=['jsonfmt', '-C']), \
-                    patch.multiple(jsonfmt, stdin=FakeStdIn('["a", "b"]')):
-                jsonfmt.main()
-                self.assertEqual(jsonfmt.stderr.read(), errmsg)
+
+    @patch.multiple(jsonfmt, is_clipboard_available=lambda: False)
+    @patch.multiple(jsonfmt, stdout=FakeStdOut(), stderr=FakeStdErr())
+    @patch.multiple(sys, argv=['jsonfmt', f'{BASE_DIR}/test/example.json', '-cC'])
+    def test_clipboard_unavailable(self):
+        errmsg = '\033[1;91mjsonfmt:\033[0m \033[0;91mclipboard unavailable\033[0m\n'
+        jsonfmt.main()
+        self.assertEqual(jsonfmt.stderr.read(), errmsg)
+        self.assertEqual(jsonfmt.stdout.read(), color(JSON_TEXT, 'json'))
 
 
 if __name__ == '__main__':
