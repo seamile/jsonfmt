@@ -25,10 +25,6 @@ def print_err(msg: Any):
     print(f'\033[1;91mjsonfmt:\033[0m \033[0;91m{msg}\033[0m', file=stderr)
 
 
-class JSONPathError(Exception):
-    pass
-
-
 class ParseError(Exception):
     pass
 

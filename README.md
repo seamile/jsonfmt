@@ -12,9 +12,9 @@ It has the following features:
 
 1. [Print JSON with **hightlight** and **pretty format** from files or stdin.](#1-pretty-print-json-object)
 2. [Minimize JSON to a single line.](#2-minimize-the-json-object)
-3. [Output part of a large JSON via jsonpath.](#3-use-jsonpath-to-match-part-of-the-object)
-4. [Format JSON to TOML or YAML.](#4-format-json-to-toml-or-yaml)
-5. [Convert between other formats.](#5-convert-between-json-toml-and-yaml-formats)
+3. [Pick out parts from a large JSON via jsonpath.](#3-pick-out-parts-of-a-large-json-via-jsonpath)
+4. [Format JSON to TOML or YAML.](#4-format-json-as-toml-or-yaml)
+5. [Conversion between these three formats.](#5-conversion-between-json-toml-and-yaml-formats)
 6. [Copy the result to clipboard.](#6-copy-the-result-to-clipboard)
 
 
@@ -118,44 +118,51 @@ $ echo '{
 {"age":21,"items":["pen","phone"],"name":"alex"}
 ```
 
-### 3. Use jsonpath to match part of the object.
+### 3. Pick out parts of a large JSON via JSONPath.
 
-**jsonfmt** uses a simplified jsonpath syntax.
+**JSONPath** is a way to query the sub-elements of a JSON document.
 
-- It matches JSON objects starting from the root node.
+It likes the XPath for xml, which can extract part of the content of a given JSON document through a simple syntax.
 
-- You can use keys to match dictionaries and indexes to match lists, and use `/` to separate different levels.
+JSONPath syntax reference <https://goessner.net/articles/JsonPath/> and <https://datatracker.ietf.org/doc/id/draft-goessner-dispatch-jsonpath-00.html>
 
-    ```shell
-    $ jsonfmt -p 'actions/0' test/example.json
-    ```
+Some examples:
 
-    *Output:*
-
-    ```json
-    {
-        "calorie": 294.9,
-        "date": "2021-03-02",
-        "name": "eat"
-    }
-    ```
-
-- If you want to match all items in a list, just use `*` to match.
+- pick out the first actions in `example.json`
 
     ```shell
-    $ jsonfmt -p 'actions/*/name' test/example.json
+    $ jsonfmt -p '$.actions[0]' test/example.json
     ```
 
     *Output:*
 
     ```json
     [
+        {
+            "calorie": 294.9,
+            "date": "2021-03-02",
+            "name": "eat"
+        }
+    ]
+    ```
+
+- Filters all occurrences of the `name` field in the JSON.
+
+    ```shell
+    $ jsonfmt -p '$..name' test/example.json
+    ```
+
+    *Output:*
+
+    ```json
+    [
+        "Bob",
         "eat",
         "sport"
     ]
     ```
 
-### 4. Format JSON to TOML or YAML.
+### 4. Format JSON as TOML or YAML.
 
 ```shell
 $ jsonfmt test/example.json -f toml
@@ -179,7 +186,7 @@ date = "2023-04-27"
 name = "sport"
 ```
 
-### 5. Convert between JSON, TOML and YAML formats.
+### 5. Conversion between JSON, TOML and YAML formats.
 
 <div style="color: orange"><strong>Note this:</strong></div>
 The `null` value is invalid in TOML. Therefore, any null values in JSON or YAML will be removed when converting to TOML.
@@ -211,7 +218,7 @@ Once you've done the above, you can then use <kbd>ctrl</kbd>+<kbd>v</kbd> or <kb
 - When you specify the `-C` option, any output destination other than the clipboard will be ignored.
 - When you process multiple files, only the last result will be preserved in the clipboard.
 
-### 7. Other usages
+### 7. Output to file.
 
 - use the `-O` parameter to overwrite the file with the result.
 
