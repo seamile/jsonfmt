@@ -90,15 +90,15 @@ def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
         output_fp.write(text)
 
 
-def format_to_text(py_obj: Any, fmt: str,
-                   *, compact: bool, escape: bool, indent: int):
+def format_to_text(py_obj: Any, fmt: str, *,
+                   compact: bool, escape: bool, indent: int, sort_keys: bool):
     '''format the py_obj to text'''
     if fmt == 'json':
         if compact:
-            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=True,
+            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
                               separators=(',', ':'))
         else:
-            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=True,
+            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
                               indent=indent)
 
     elif fmt == 'toml':
@@ -110,19 +110,21 @@ def format_to_text(py_obj: Any, fmt: str,
 
     elif fmt == 'toml':
         return yaml.safe_dump(py_obj, allow_unicode=not escape, indent=indent,
-                              sort_keys=True)
+                              sort_keys=sort_keys)
 
     else:
         raise ParseError('Unknow format')
 
 
-def process(input_fp: IO, jpath: Optional[str], overwrite: bool,
-            *, cp2clip: bool, compact: bool, escape: bool, indent: int):
+def process(input_fp: IO, jpath: Optional[str], *,
+            overwrite: bool, cp2clip: bool, compact: bool,
+            escape: bool, indent: int, sort_keys: bool):
     # parse and format
     input_text = input_fp.read()
     py_obj, fmt = parse_to_pyobj(input_text, jpath)
     formated_text = format_to_text(py_obj, fmt,
-                                   compact=compact, escape=escape, indent=indent)
+                                   compact=compact, escape=escape,
+                                   indent=indent, sort_keys=sort_keys)
 
     if input_fp.name == '<stdin>' or not overwrite:
         output_fp = stdout
@@ -151,6 +153,8 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
                         help='overwrite the formated text to original file')
     parser.add_argument('-p', dest='jsonpath', type=str,
                         help='output part of the object via jsonpath')
+    parser.add_argument('-s', dest='sort_keys', action='store_true',
+                        help='sort keys of objects on output')
     parser.add_argument(dest='files', nargs='*',
                         help='the files that will be processed')
     parser.add_argument('-v', dest='version', action='version',
@@ -172,9 +176,10 @@ def main():
         try:
             # read from file
             input_fp = open(file, 'r+') if isinstance(file, str) else file
-            process(input_fp, args.jsonpath, args.overwrite,
-                    cp2clip=cp2clip, compact=args.compact,
-                    escape=args.escape, indent=args.indent)
+            process(input_fp, args.jsonpath,
+                    overwrite=args.overwrite, cp2clip=cp2clip,
+                    compact=args.compact, escape=args.escape,
+                    indent=args.indent, sort_keys=args.sort_keys)
         except ParseError as err:
             print_err(err)
         except FileNotFoundError:
