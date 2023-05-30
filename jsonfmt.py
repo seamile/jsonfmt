@@ -7,13 +7,14 @@ import toml
 import yaml
 from argparse import ArgumentParser
 from functools import partial
+from io import TextIOBase
 from jsonpath import jsonpath
 from pydoc import pager
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 from shutil import get_terminal_size
-from sys import stdin, stdout, stderr, exit
+from sys import stdin, stdout, stderr
 from typing import Any, IO, Optional, Sequence
 
 __version__ = '0.2.4'
@@ -37,32 +38,37 @@ def is_clipboard_available() -> bool:
         and paste_fn.__class__.__name__ != 'ClipboardUnavailable'
 
 
-def parse_to_pyobj(input_fp: IO, jpath: Optional[str]) -> Any:
+def parse_to_pyobj(text: str, jpath: Optional[str]) -> tuple[Any, str]:
     '''read json, toml or yaml from IO and then match sub-element by jsonpath'''
     # parse json, toml or yaml to python object
-    obj_text = input_fp.read()
-    yaml_load = partial(yaml.load, Loader=yaml.Loader)
-    for fn_loads in [json.loads, toml.loads, yaml_load]:
+    loads_methods = {
+        'json': json.loads,
+        'toml': toml.loads,
+        'yaml': partial(yaml.load, Loader=yaml.Loader),
+    }
+
+    # try to load the text to be parsed
+    for fmt, fn_loads in loads_methods.items():
         try:
-            py_obj = fn_loads(obj_text)
+            py_obj = fn_loads(text)
             break
         except Exception:
             continue
     else:
-        raise ParseError(f"no json, toml or yaml object in `{input_fp.name}`")
+        raise ParseError("no json, toml or yaml found in the text")
 
     if jpath is None:
-        return py_obj
+        return py_obj, fmt
     else:
         # match sub-elements via jsonpath
         subelements = jsonpath(py_obj, jpath)
         if subelements is False:
             raise ParseError('wrong jsonpath')
         else:
-            return subelements
+            return subelements, fmt
 
 
-def output(output_fp: IO, text: str, text_format: str, cp2clip: bool):
+def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
     # copy the result to clipboard
     if cp2clip:
         pyperclip.copy(text)
@@ -70,11 +76,7 @@ def output(output_fp: IO, text: str, text_format: str, cp2clip: bool):
         return
     elif output_fp.isatty():
         # highlight the text when output to TTY divice
-        Lexer = {
-            'json': JsonLexer,
-            'toml': TOMLLexer,
-            'yaml': YamlLexer,
-        }[text_format]
+        Lexer = {'json': JsonLexer, 'toml': TOMLLexer, 'yaml': YamlLexer}[fmt]
         colored_text = highlight(text, Lexer(), TerminalFormatter())
         t_width, t_hight = get_terminal_size()
         if text.count('\n') >= t_hight or len(text) > t_width * (t_hight - 1):
@@ -85,53 +87,48 @@ def output(output_fp: IO, text: str, text_format: str, cp2clip: bool):
         output_fp.write(text)
 
 
-def output_json(py_obj: Any, output_fp: IO, *,
-                cp2clip: bool, compact: bool, escape: bool, indent: int):
-    '''output formated json to file or stdout'''
-    if compact:
-        json_text = json.dumps(py_obj, ensure_ascii=escape, sort_keys=True,
-                               separators=(',', ':'))
+def format_to_text(py_obj: Any, fmt: str,
+                   *, compact: bool, escape: bool, indent: int):
+    '''format the py_obj to text'''
+    if fmt == 'json':
+        if compact:
+            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=True,
+                              separators=(',', ':'))
+        else:
+            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=True,
+                              indent=indent)
+
+    elif fmt == 'toml':
+        if not isinstance(py_obj, dict):
+            msg = 'the pyobj must be a Mapping when format to toml'
+            print_err(msg)
+            raise ParseError(msg)
+        return toml.dumps(py_obj)
+
+    elif fmt == 'toml':
+        return yaml.safe_dump(py_obj, allow_unicode=not escape, indent=indent,
+                              sort_keys=True)
+
     else:
-        json_text = json.dumps(py_obj, ensure_ascii=escape, sort_keys=True,
-                               indent=indent)
-
-    # append a blank line at the end of `fp`
-    if json_text[-1] != '\n':
-        json_text += '\n'
-
-    output(output_fp, json_text, 'json', cp2clip)
+        raise ParseError('Unknow format')
 
 
-def output_toml(py_obj: Any, output_fp: IO, *, cp2clip: bool):
-    '''output formated toml to file or stdout'''
-    if not isinstance(py_obj, dict):
-        print_err('the pyobj must be a Mapping when format to toml')
-        exit(3)
+def process(input_fp: IO, jpath: Optional[str], overwrite: bool,
+            *, cp2clip: bool, compact: bool, escape: bool, indent: int):
+    # parse and format
+    input_text = input_fp.read()
+    py_obj, fmt = parse_to_pyobj(input_text, jpath)
+    formated_text = format_to_text(py_obj, fmt,
+                                   compact=compact, escape=escape, indent=indent)
 
-    toml_text = toml.dumps(py_obj)
-
-    # copy the result to clipboard
-    if cp2clip:
-        pyperclip.copy(toml_text)
-        print_inf('result copied to clipboard.')
-        return
-
-    output(output_fp, toml_text, 'toml', cp2clip)
-
-
-def output_yaml(py_obj: Any, output_fp: IO, *,
-                cp2clip: bool, escape: bool, indent: int):
-    '''output formated yaml to file or stdout'''
-    yaml_text = yaml.safe_dump(py_obj, allow_unicode=not escape, indent=indent,
-                               sort_keys=True)
-
-    # copy the result to clipboard
-    if cp2clip:
-        pyperclip.copy(yaml_text)
-        print_inf('result copied to clipboard.')
-        return
-
-    output(output_fp, yaml_text, 'yaml', cp2clip)
+    if input_fp.name == '<stdin>' or not overwrite:
+        output_fp = stdout
+    else:
+        # truncate file to zero length before overwrite
+        input_fp.seek(0)
+        input_fp.truncate()
+        output_fp = input_fp
+    output(output_fp, formated_text, fmt, cp2clip)
 
 
 def parse_cmdline_args(args: Optional[Sequence[str]] = None):
@@ -166,46 +163,23 @@ def main():
     if args.cp2clip and not cp2clip:
         print_err('clipboard unavailable')
 
-    # match the specified output function
-    fn_output = {
-        'json': partial(output_json, cp2clip=cp2clip, compact=args.compact,
-                        escape=args.escape, indent=args.indent),
-        'yaml': partial(output_yaml, cp2clip=cp2clip, escape=args.escape,
-                        indent=args.indent),
-        'toml': partial(output_toml, cp2clip=cp2clip),
-    }[args.format]
+    files = args.files or [stdin]
 
-    if args.files:
-        for file in args.files:
-            try:
-                # read from file
-                with open(file, 'r+') as input_fp:
-                    try:
-                        py_obj = parse_to_pyobj(input_fp, args.jsonpath)
-                    except ParseError as err:
-                        print_err(err)
-                        exit(1)
-                    else:
-                        if args.overwrite:
-                            # truncate file to zero length before overwrite
-                            input_fp.seek(0)
-                            input_fp.truncate()
-                            output_fp = input_fp
-                        else:
-                            output_fp = stdout
-
-                        fn_output(py_obj, output_fp)
-            except FileNotFoundError:
-                print_err(f'no such file `{file}`')
-    else:
+    for file in files:
         try:
-            # read from stdin
-            py_obj = parse_to_pyobj(stdin, args.jsonpath)
+            # read from file
+            input_fp = open(file, 'r+') if isinstance(file, str) else file
+            process(input_fp, args.jsonpath, args.overwrite,
+                    cp2clip=cp2clip, compact=args.compact,
+                    escape=args.escape, indent=args.indent)
         except ParseError as err:
             print_err(err)
-            exit(2)
-        else:
-            fn_output(py_obj, stdout)
+        except FileNotFoundError:
+            print_err(f'no such file `{file}`')
+        finally:
+            input_fp = locals().get('input_fp')
+            if isinstance(input_fp, TextIOBase):
+                input_fp.close()
 
 
 if __name__ == "__main__":

@@ -8,6 +8,8 @@
 
 **jsonfmt** is a CLI tool for pretty printing, querying and format conversion JSON documents.
 
+It is as powerful as [jq](https://github.com/jqlang/jq), but much simpler to process JSON.
+
 ## Features
 
 1. [Print JSON with **hightlight** and **pretty format**.](#1-pretty-print-json-object)
