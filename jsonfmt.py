@@ -16,6 +16,7 @@ from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 from shutil import get_terminal_size
 from sys import stdin, stdout, stderr
 from typing import Any, IO, Optional, Sequence
+from unittest.mock import patch
 
 __version__ = '0.2.4'
 
@@ -74,13 +75,15 @@ def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
         pyperclip.copy(text)
         print_inf('result copied to clipboard.')
         return
-    elif output_fp.isatty():
+    elif stdout.isatty():
         # highlight the text when output to TTY divice
         Lexer = {'json': JsonLexer, 'toml': TOMLLexer, 'yaml': YamlLexer}[fmt]
         colored_text = highlight(text, Lexer(), TerminalFormatter())
-        t_width, t_hight = get_terminal_size()
-        if text.count('\n') >= t_hight or len(text) > t_width * (t_hight - 1):
-            pager(colored_text)
+        win_w, win_h = get_terminal_size()
+        # use pager when line-hight > screen hight or
+        if text.count('\n') >= win_h or len(text) > win_w * (win_h - 1):
+            with patch("sys.stdin.isatty", lambda *_: True):
+                pager(colored_text)
         else:
             output_fp.write(colored_text)
     else:
