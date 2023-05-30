@@ -8,13 +8,15 @@ import yaml
 from argparse import ArgumentParser
 from functools import partial
 from jsonpath import jsonpath
+from pydoc import pager
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
+from shutil import get_terminal_size
 from sys import stdin, stdout, stderr, exit
 from typing import Any, IO, Optional, Sequence
 
-__version__ = '0.2.3'
+__version__ = '0.2.4'
 
 
 def print_inf(msg: Any):
@@ -60,6 +62,29 @@ def parse_to_pyobj(input_fp: IO, jpath: Optional[str]) -> Any:
             return subelements
 
 
+def output(output_fp: IO, text: str, text_format: str, cp2clip: bool):
+    # copy the result to clipboard
+    if cp2clip:
+        pyperclip.copy(text)
+        print_inf('result copied to clipboard.')
+        return
+    elif output_fp.isatty():
+        # highlight the text when output to TTY divice
+        Lexer = {
+            'json': JsonLexer,
+            'toml': TOMLLexer,
+            'yaml': YamlLexer,
+        }[text_format]
+        colored_text = highlight(text, Lexer(), TerminalFormatter())
+        t_width, t_hight = get_terminal_size()
+        if text.count('\n') >= t_hight or len(text) > t_width * (t_hight - 1):
+            pager(colored_text)
+        else:
+            output_fp.write(colored_text)
+    else:
+        output_fp.write(text)
+
+
 def output_json(py_obj: Any, output_fp: IO, *,
                 cp2clip: bool, compact: bool, escape: bool, indent: int):
     '''output formated json to file or stdout'''
@@ -70,21 +95,11 @@ def output_json(py_obj: Any, output_fp: IO, *,
         json_text = json.dumps(py_obj, ensure_ascii=escape, sort_keys=True,
                                indent=indent)
 
-    # copy the result to clipboard
-    if cp2clip:
-        pyperclip.copy(json_text)
-        print_inf('result copied to clipboard.')
-        return
-
-    # highlight the json code when output to TTY divice
-    if output_fp.isatty():
-        json_text = highlight(json_text, JsonLexer(), TerminalFormatter())
-
     # append a blank line at the end of `fp`
     if json_text[-1] != '\n':
         json_text += '\n'
 
-    output_fp.write(json_text)
+    output(output_fp, json_text, 'json', cp2clip)
 
 
 def output_toml(py_obj: Any, output_fp: IO, *, cp2clip: bool):
@@ -101,11 +116,7 @@ def output_toml(py_obj: Any, output_fp: IO, *, cp2clip: bool):
         print_inf('result copied to clipboard.')
         return
 
-    # highlight the toml code when output to TTY divice
-    if output_fp.isatty():
-        toml_text = highlight(toml_text, TOMLLexer(), TerminalFormatter())
-
-    output_fp.write(toml_text)
+    output(output_fp, toml_text, 'toml', cp2clip)
 
 
 def output_yaml(py_obj: Any, output_fp: IO, *,
@@ -120,11 +131,7 @@ def output_yaml(py_obj: Any, output_fp: IO, *,
         print_inf('result copied to clipboard.')
         return
 
-    # highlight the yaml code when output to TTY divice
-    if output_fp.isatty():
-        yaml_text = highlight(yaml_text, YamlLexer(), TerminalFormatter())
-
-    output_fp.write(yaml_text)
+    output(output_fp, yaml_text, 'yaml', cp2clip)
 
 
 def parse_cmdline_args(args: Optional[Sequence[str]] = None):

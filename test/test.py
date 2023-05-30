@@ -284,7 +284,3 @@ class JSONFormatToolTestCase(unittest.TestCase):
         jsonfmt.main()
         self.assertEqual(jsonfmt.stderr.read(), errmsg)
         self.assertEqual(jsonfmt.stdout.read(), color(JSON_TEXT, 'json'))
-
-
-if __name__ == '__main__':
-    unittest.main()

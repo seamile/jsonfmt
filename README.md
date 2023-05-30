@@ -6,11 +6,11 @@
 [![Code Grade](https://app.codacy.com/project/badge/Grade/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Test Coverage](https://app.codacy.com/project/badge/Coverage/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 
-**jsonfmt** is a CLI tool for pretty printing or compressing JSON objects.
+**jsonfmt** is a CLI tool for pretty printing, querying and format conversion JSON documents.
 
-It has the following features:
+## Features
 
-1. [Print JSON with **hightlight** and **pretty format** from files or stdin.](#1-pretty-print-json-object)
+1. [Print JSON with **hightlight** and **pretty format**.](#1-pretty-print-json-object)
 2. [Minimize JSON to a single line.](#2-minimize-the-json-object)
 3. [Pick out parts from a large JSON via jsonpath.](#3-pick-out-parts-of-a-large-json-via-jsonpath)
 4. [Format JSON to TOML or YAML.](#4-format-json-as-toml-or-yaml)
