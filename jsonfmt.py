@@ -3,6 +3,7 @@
 
 import json
 import pyperclip
+import re
 import toml
 import yaml
 from argparse import ArgumentParser
@@ -15,10 +16,13 @@ from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 from shutil import get_terminal_size
 from sys import stdin, stdout, stderr
-from typing import Any, IO, Optional, Sequence
+from typing import Any, List, IO, Optional, Sequence, Union
 from unittest.mock import patch
 
 __version__ = '0.2.4'
+
+NUMERIC = re.compile(r'-?\d+$|-?\d+\.\d+$|^-?\d+\.?\d+e-?\d+$')
+DICT_OR_LIST = re.compile(r'^\{.*\}$|^\[.*\]$')
 
 
 def print_inf(msg: Any):
@@ -67,6 +71,47 @@ def parse_to_pyobj(text: str, jpath: Optional[str]) -> tuple[Any, str]:
             raise ParseError('wrong jsonpath')
         else:
             return subelements, fmt
+
+
+def forward_by_keys(py_obj: Any, keys: str) -> tuple[Any, Union[str, int]]:
+    next_k = lambda obj, k: int(k) if isinstance(obj, list) else k
+
+    _keys = keys.replace(']', '').replace('[', '.').split('.')
+    for k in _keys[:-1]:
+        py_obj = py_obj[next_k(py_obj, k)]
+    else:
+        return py_obj, next_k(py_obj, _keys[-1])
+
+
+def load_value(value: str):
+    if NUMERIC.match(value):
+        return eval(value)
+    elif DICT_OR_LIST.match(value):
+        try:
+            return eval(value)
+        except Exception:
+            return value
+    else:
+        return value
+
+
+def modify_pyobj(py_obj: Any, sets: List[str], pops: List[str]):
+    for kv in sets:
+        try:
+            keys, value = kv.split('=')
+            bottom, last_k = forward_by_keys(py_obj, keys)
+            bottom[last_k] = load_value(value)
+        except (IndexError, KeyError, ValueError):
+            print_err(f'invalid key path: {kv}')
+            continue
+
+    for keys in pops:
+        try:
+            bottom, last_k = forward_by_keys(py_obj, keys)
+            bottom.pop(last_k)
+        except (IndexError, KeyError):
+            print_err(f'invalid key path: {keys}')
+            continue
 
 
 def get_overview(py_obj: Any):
@@ -136,10 +181,16 @@ def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
 
 def process(input_fp: IO, jpath: Optional[str], to_format: Optional[str], *,
             compact: bool, cp2clip: bool, escape: bool, indent: int,
-            overview: bool, overwrite: bool, sort_keys: bool):
+            overview: bool, overwrite: bool, sort_keys: bool,
+            sets: Optional[list], pops: Optional[list]):
     # parse and format
     input_text = input_fp.read()
     py_obj, fmt = parse_to_pyobj(input_text, jpath)
+
+    if sets or pops:
+        sets = sets or []
+        pops = pops or []
+        modify_pyobj(py_obj, sets, pops)
 
     if overview:
         py_obj = get_overview(py_obj)
@@ -178,6 +229,10 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
                         help='output part of the object via jsonpath')
     parser.add_argument('-s', dest='sort_keys', action='store_true',
                         help='sort keys of objects on output')
+    parser.add_argument('--set', nargs='*', metavar="foo.k1=v1 k2[i]=v2",
+                        help='set the keys to values')
+    parser.add_argument('--pop', nargs='*', metavar="k1 foo.k2 k3[i]",
+                        help='pop the specified keys')
     parser.add_argument(dest='files', nargs='*',
                         help='the files that will be processed')
     parser.add_argument('-v', dest='version', action='version',
@@ -208,7 +263,9 @@ def main():
                     indent=args.indent,
                     overview=args.overview,
                     overwrite=args.overwrite,
-                    sort_keys=args.sort_keys)
+                    sort_keys=args.sort_keys,
+                    sets=args.set,
+                    pops=args.pop)
         except ParseError as err:
             print_err(err)
         except FileNotFoundError:
