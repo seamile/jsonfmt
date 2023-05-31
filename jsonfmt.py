@@ -69,6 +69,48 @@ def parse_to_pyobj(text: str, jpath: Optional[str]) -> tuple[Any, str]:
             return subelements, fmt
 
 
+def get_overview(py_obj: Any):
+    def clip_value(value: Any):
+        if isinstance(value, str):
+            return '...'
+        elif isinstance(value, (list, tuple)):
+            return []
+        elif isinstance(value, dict):
+            return {k: clip_value(v) for k, v in value.items()}
+        else:
+            return value
+
+    if isinstance(py_obj, list):
+        return [clip_value(py_obj[0])]
+    else:
+        return clip_value(py_obj)
+
+
+def format_to_text(py_obj: Any, fmt: str, *,
+                   compact: bool, escape: bool, indent: int, sort_keys: bool):
+    '''format the py_obj to text'''
+    if fmt == 'json':
+        if compact:
+            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
+                              separators=(',', ':'))
+        else:
+            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
+                              indent=indent)
+
+    elif fmt == 'toml':
+        if not isinstance(py_obj, dict):
+            msg = 'the pyobj must be a Mapping when format to toml'
+            raise ParseError(msg)
+        return toml.dumps(py_obj)
+
+    elif fmt == 'yaml':
+        return yaml.safe_dump(py_obj, allow_unicode=not escape, indent=indent,
+                              sort_keys=sort_keys)
+
+    else:
+        raise ParseError('Unknow format')
+
+
 def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
     # copy the result to clipboard
     if cp2clip:
@@ -87,53 +129,33 @@ def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
         else:
             output_fp.write(colored_text)
     else:
+        output_fp.seek(0)
+        output_fp.truncate()
         output_fp.write(text)
 
 
-def format_to_text(py_obj: Any, fmt: str, *,
-                   compact: bool, escape: bool, indent: int, sort_keys: bool):
-    '''format the py_obj to text'''
-    if fmt == 'json':
-        if compact:
-            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
-                              separators=(',', ':'))
-        else:
-            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
-                              indent=indent)
-
-    elif fmt == 'toml':
-        if not isinstance(py_obj, dict):
-            msg = 'the pyobj must be a Mapping when format to toml'
-            print_err(msg)
-            raise ParseError(msg)
-        return toml.dumps(py_obj)
-
-    elif fmt == 'toml':
-        return yaml.safe_dump(py_obj, allow_unicode=not escape, indent=indent,
-                              sort_keys=sort_keys)
-
-    else:
-        raise ParseError('Unknow format')
-
-
-def process(input_fp: IO, jpath: Optional[str], *,
-            overwrite: bool, cp2clip: bool, compact: bool,
-            escape: bool, indent: int, sort_keys: bool):
+def process(input_fp: IO, jpath: Optional[str], to_format: Optional[str], *,
+            compact: bool, cp2clip: bool, escape: bool, indent: int,
+            overview: bool, overwrite: bool, sort_keys: bool):
     # parse and format
     input_text = input_fp.read()
     py_obj, fmt = parse_to_pyobj(input_text, jpath)
-    formated_text = format_to_text(py_obj, fmt,
+
+    if overview:
+        py_obj = get_overview(py_obj)
+
+    to_format = to_format or fmt
+    formated_text = format_to_text(py_obj, to_format,
                                    compact=compact, escape=escape,
                                    indent=indent, sort_keys=sort_keys)
 
+    # output the result
     if input_fp.name == '<stdin>' or not overwrite:
         output_fp = stdout
     else:
         # truncate file to zero length before overwrite
-        input_fp.seek(0)
-        input_fp.truncate()
         output_fp = input_fp
-    output(output_fp, formated_text, fmt, cp2clip)
+    output(output_fp, formated_text, to_format, cp2clip)
 
 
 def parse_cmdline_args(args: Optional[Sequence[str]] = None):
@@ -144,11 +166,12 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
                         help='copy the result to clipboard')
     parser.add_argument('-e', dest='escape', action='store_true',
                         help='escape non-ASCII characters')
-    parser.add_argument('-f', dest='format', default='json',
-                        choices=['json', 'toml', 'yaml'],
+    parser.add_argument('-f', dest='format', choices=['json', 'toml', 'yaml'],
                         help='the format to output ''(default: %(default)s)')
     parser.add_argument('-i', dest='indent', type=int, default=2,
                         help='number of spaces for indentation (default: %(default)s)')
+    parser.add_argument('-o', dest='overview', action='store_true',
+                        help='show data structure overview')
     parser.add_argument('-O', dest='overwrite', action='store_true',
                         help='overwrite the formated text to original file')
     parser.add_argument('-p', dest='jsonpath', type=str,
@@ -176,10 +199,16 @@ def main():
         try:
             # read from file
             input_fp = open(file, 'r+') if isinstance(file, str) else file
-            process(input_fp, args.jsonpath,
-                    overwrite=args.overwrite, cp2clip=cp2clip,
-                    compact=args.compact, escape=args.escape,
-                    indent=args.indent, sort_keys=args.sort_keys)
+            process(input_fp,
+                    args.jsonpath,
+                    args.format,
+                    compact=args.compact,
+                    cp2clip=cp2clip,
+                    escape=args.escape,
+                    indent=args.indent,
+                    overview=args.overview,
+                    overwrite=args.overwrite,
+                    sort_keys=args.sort_keys)
         except ParseError as err:
             print_err(err)
         except FileNotFoundError:
