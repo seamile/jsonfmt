@@ -37,7 +37,12 @@ class ParseError(Exception):
     pass
 
 
+class JsonPathError(Exception):
+    pass
+
+
 def is_clipboard_available() -> bool:
+    '''check if the clipboard available'''
     copy_fn, paste_fn = pyperclip.determine_clipboard()
     return copy_fn.__class__.__name__ != 'ClipboardUnavailable' \
         and paste_fn.__class__.__name__ != 'ClipboardUnavailable'
@@ -68,7 +73,7 @@ def parse_to_pyobj(text: str, jpath: Optional[str]) -> tuple[Any, str]:
         # match sub-elements via jsonpath
         subelements = jsonpath(py_obj, jpath)
         if subelements is False:
-            raise ParseError('wrong jsonpath')
+            raise JsonPathError('invalid JSONPath or query result is empty')
         else:
             return subelements, fmt
 
@@ -132,7 +137,8 @@ def get_overview(py_obj: Any):
 
 
 def format_to_text(py_obj: Any, fmt: str, *,
-                   compact: bool, escape: bool, indent: int, sort_keys: bool):
+                   compact: bool, escape: bool,
+                   indent: int, sort_keys: bool) -> str:
     '''format the py_obj to text'''
     if fmt == 'json':
         if compact:
@@ -162,7 +168,7 @@ def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
         pyperclip.copy(text)
         print_inf('result copied to clipboard.')
         return
-    elif stdout.isatty():
+    elif output_fp.isatty():
         # highlight the text when output to TTY divice
         Lexer = {'json': JsonLexer, 'toml': TOMLLexer, 'yaml': YamlLexer}[fmt]
         colored_text = highlight(text, Lexer(), TerminalFormatter())
@@ -179,7 +185,7 @@ def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
         output_fp.write(text)
 
 
-def process(input_fp: IO, jpath: Optional[str], to_format: Optional[str], *,
+def process(input_fp: IO, jpath: Optional[str], convert_fmt: Optional[str], *,
             compact: bool, cp2clip: bool, escape: bool, indent: int,
             overview: bool, overwrite: bool, sort_keys: bool,
             sets: Optional[list], pops: Optional[list]):
@@ -188,15 +194,13 @@ def process(input_fp: IO, jpath: Optional[str], to_format: Optional[str], *,
     py_obj, fmt = parse_to_pyobj(input_text, jpath)
 
     if sets or pops:
-        sets = sets or []
-        pops = pops or []
-        modify_pyobj(py_obj, sets, pops)
+        modify_pyobj(py_obj, sets, pops)  # type: ignore
 
     if overview:
         py_obj = get_overview(py_obj)
 
-    to_format = to_format or fmt
-    formated_text = format_to_text(py_obj, to_format,
+    convert_fmt = convert_fmt or fmt
+    formated_text = format_to_text(py_obj, convert_fmt,
                                    compact=compact, escape=escape,
                                    indent=indent, sort_keys=sort_keys)
 
@@ -206,7 +210,7 @@ def process(input_fp: IO, jpath: Optional[str], to_format: Optional[str], *,
     else:
         # truncate file to zero length before overwrite
         output_fp = input_fp
-    output(output_fp, formated_text, to_format, cp2clip)
+    output(output_fp, formated_text, convert_fmt, cp2clip)
 
 
 def parse_cmdline_args(args: Optional[Sequence[str]] = None):
@@ -229,10 +233,10 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
                         help='output part of the object via jsonpath')
     parser.add_argument('-s', dest='sort_keys', action='store_true',
                         help='sort keys of objects on output')
-    parser.add_argument('--set', nargs='*', metavar="foo.k1=v1 k2[i]=v2",
-                        help='set the keys to values')
-    parser.add_argument('--pop', nargs='*', metavar="k1 foo.k2 k3[i]",
-                        help='pop the specified keys')
+    parser.add_argument('--set', metavar="foo.k1=v1,k2[i]=v2",
+                        help='set the keys to values (seperated by `;`)')
+    parser.add_argument('--pop', metavar="k1,foo.k2,k3[i]",
+                        help='pop the specified keys (seperated by `;`)')
     parser.add_argument(dest='files', nargs='*',
                         help='the files that will be processed')
     parser.add_argument('-v', dest='version', action='version',
@@ -248,6 +252,13 @@ def main():
     if args.cp2clip and not cp2clip:
         print_err('clipboard unavailable')
 
+    # the overwrite will be forced to close when showing overview
+    overwrite = False if args.overview else args.overwrite
+
+    # get sets and pops
+    sets = [k.strip() for k in args.set.split(';')] if args.set else []
+    pops = [k.strip() for k in args.pop.split(';')] if args.pop else []
+
     files = args.files or [stdin]
 
     for file in files:
@@ -262,10 +273,10 @@ def main():
                     escape=args.escape,
                     indent=args.indent,
                     overview=args.overview,
-                    overwrite=args.overwrite,
+                    overwrite=overwrite,
                     sort_keys=args.sort_keys,
-                    sets=args.set,
-                    pops=args.pop)
+                    sets=sets,
+                    pops=pops)
         except ParseError as err:
             print_err(err)
         except FileNotFoundError:
