@@ -16,7 +16,7 @@ from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 from shutil import get_terminal_size
 from sys import stdin, stdout, stderr
-from typing import Any, List, IO, Optional, Sequence, Union
+from typing import Any, List, IO, Optional, Sequence, Tuple, Union
 from unittest.mock import patch
 
 __version__ = '0.2.4'
@@ -26,7 +26,7 @@ DICT_OR_LIST = re.compile(r'^\{.*\}$|^\[.*\]$')
 
 
 def print_inf(msg: Any):
-    print(f'\033[1;94mjsonfmt:\033[0m \033[0;94m{msg}\033[0m', file=stdout)
+    print(f'\033[1;94mjsonfmt:\033[0m \033[0;94m{msg}\033[0m', file=stderr)
 
 
 def print_err(msg: Any):
@@ -48,7 +48,7 @@ def is_clipboard_available() -> bool:
         and paste_fn.__class__.__name__ != 'ClipboardUnavailable'
 
 
-def parse_to_pyobj(text: str, jpath: Optional[str]) -> tuple[Any, str]:
+def parse_to_pyobj(text: str, jpath: Optional[str]) -> Tuple[Any, str]:
     '''read json, toml or yaml from IO and then match sub-element by jsonpath'''
     # parse json, toml or yaml to python object
     loads_methods = {
@@ -78,7 +78,7 @@ def parse_to_pyobj(text: str, jpath: Optional[str]) -> tuple[Any, str]:
             return subelements, fmt
 
 
-def forward_by_keys(py_obj: Any, keys: str) -> tuple[Any, Union[str, int]]:
+def forward_by_keys(py_obj: Any, keys: str) -> Tuple[Any, Union[str, int]]:
     next_k = lambda obj, k: int(k) if isinstance(obj, list) else k
 
     _keys = keys.replace(']', '').replace('[', '.').split('.')
@@ -138,7 +138,7 @@ def get_overview(py_obj: Any):
 
 def format_to_text(py_obj: Any, fmt: str, *,
                    compact: bool, escape: bool,
-                   indent: int, sort_keys: bool) -> str:
+                   indent: Union[int, str], sort_keys: bool) -> str:
     '''format the py_obj to text'''
     if fmt == 'json':
         if compact:
@@ -155,7 +155,8 @@ def format_to_text(py_obj: Any, fmt: str, *,
         return toml.dumps(py_obj)
 
     elif fmt == 'yaml':
-        return yaml.safe_dump(py_obj, allow_unicode=not escape, indent=indent,
+        _indent = None if indent == '\t' else int(indent)
+        return yaml.safe_dump(py_obj, allow_unicode=not escape, indent=_indent,
                               sort_keys=sort_keys)
 
     else:
@@ -183,10 +184,12 @@ def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
         output_fp.seek(0)
         output_fp.truncate()
         output_fp.write(text)
+        if output_fp.fileno() > 2:
+            print_inf(f'result written to {output_fp.name}.')
 
 
 def process(input_fp: IO, jpath: Optional[str], convert_fmt: Optional[str], *,
-            compact: bool, cp2clip: bool, escape: bool, indent: int,
+            compact: bool, cp2clip: bool, escape: bool, indent: Union[int, str],
             overview: bool, overwrite: bool, sort_keys: bool,
             sets: Optional[list], pops: Optional[list]):
     # parse and format
@@ -216,14 +219,15 @@ def process(input_fp: IO, jpath: Optional[str], convert_fmt: Optional[str], *,
 def parse_cmdline_args(args: Optional[Sequence[str]] = None):
     parser = ArgumentParser('jsonfmt')
     parser.add_argument('-c', dest='compact', action='store_true',
-                        help='compact the json object to a single line')
+                        help='suppress all whitespace separation')
     parser.add_argument('-C', dest='cp2clip', action='store_true',
                         help='copy the result to clipboard')
     parser.add_argument('-e', dest='escape', action='store_true',
                         help='escape non-ASCII characters')
     parser.add_argument('-f', dest='format', choices=['json', 'toml', 'yaml'],
                         help='the format to output ''(default: %(default)s)')
-    parser.add_argument('-i', dest='indent', type=int, default=2,
+    parser.add_argument('-i', dest='indent', metavar='{0-8,t}',
+                        choices='012345678t', default='2',
                         help='number of spaces for indentation (default: %(default)s)')
     parser.add_argument('-o', dest='overview', action='store_true',
                         help='show data structure overview')
@@ -233,9 +237,9 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
                         help='output part of the object via jsonpath')
     parser.add_argument('-s', dest='sort_keys', action='store_true',
                         help='sort keys of objects on output')
-    parser.add_argument('--set', metavar="foo.k1=v1,k2[i]=v2",
+    parser.add_argument('--set', metavar="'foo.k1=v1;k2[i]=v2'",
                         help='set the keys to values (seperated by `;`)')
-    parser.add_argument('--pop', metavar="k1,foo.k2,k3[i]",
+    parser.add_argument('--pop', metavar="'k1;foo.k2;k3[i]'",
                         help='pop the specified keys (seperated by `;`)')
     parser.add_argument(dest='files', nargs='*',
                         help='the files that will be processed')
@@ -251,6 +255,9 @@ def main():
     cp2clip = args.cp2clip and is_clipboard_available()
     if args.cp2clip and not cp2clip:
         print_err('clipboard unavailable')
+
+    # check the indent
+    indent = '\t' if args.indent == 't' else int(args.indent)
 
     # the overwrite will be forced to close when showing overview
     overwrite = False if args.overview else args.overwrite
@@ -271,7 +278,7 @@ def main():
                     compact=args.compact,
                     cp2clip=cp2clip,
                     escape=args.escape,
-                    indent=args.indent,
+                    indent=indent,
                     overview=args.overview,
                     overwrite=overwrite,
                     sort_keys=args.sort_keys,

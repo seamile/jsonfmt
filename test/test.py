@@ -253,7 +253,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             cp2clip=False,
             escape=False,
             format=None,
-            indent=2,
+            indent='2',
             overview=False,
             overwrite=False,
             jsonpath=None,
@@ -286,7 +286,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             cp2clip=True,
             escape=True,
             format='toml',
-            indent=4,
+            indent='4',
             overview=True,
             overwrite=True,
             jsonpath='path/to/json',
@@ -299,10 +299,11 @@ class JSONFormatToolTestCase(unittest.TestCase):
         actual_args = jsonfmt.parse_cmdline_args(args=args)
         self.assertEqual(actual_args, expected_args)
 
-    @patch.multiple(sys, argv=['jsonfmt', '-i', '4', '-p', '$.name', f'{BASE_DIR}/test/example.json'])
+    @patch.multiple(sys, argv=['jsonfmt', '-i', 't', '-p', '$.name',
+                               f'{BASE_DIR}/test/example.json'])
     @patch.multiple(jsonfmt, stdout=FakeStdOut())
     def test_main_with_file(self):
-        expected_output = color('[\n    "Bob"\n]', 'json')
+        expected_output = color('[\n\t"Bob"\n]', 'json')
         jsonfmt.main()
         self.assertEqual(jsonfmt.stdout.read(), expected_output)
 
@@ -363,17 +364,20 @@ class JSONFormatToolTestCase(unittest.TestCase):
     @patch.multiple(jsonfmt, stdout=FakeStdOut(), stderr=FakeStdErr())
     def test_copy_to_clipboard(self):
         if jsonfmt.is_clipboard_available():
-            with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.json', '-Ccs']):
+            with patch("sys.argv",
+                       ['jsonfmt', '-Ccs', f'{BASE_DIR}/test/example.json']):
                 jsonfmt.main()
                 copied_text = pyperclip.paste().strip()
                 self.assertEqual(copied_text, JSON_TEXT.strip())
 
-            with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.toml', '-Cs']):
+            with patch("sys.argv",
+                       ['jsonfmt', '-Cs', f'{BASE_DIR}/test/example.toml']):
                 jsonfmt.main()
                 copied_text = pyperclip.paste().strip()
                 self.assertEqual(copied_text, TOML_TEXT.strip())
 
-            with patch("sys.argv", ['jsonfmt', f'{BASE_DIR}/test/example.yaml', '-Cs']):
+            with patch("sys.argv",
+                       ['jsonfmt', '-Cs', f'{BASE_DIR}/test/example.yaml']):
                 jsonfmt.main()
                 copied_text = pyperclip.paste().strip()
                 self.assertEqual(copied_text, YAML_TEXT.strip())
