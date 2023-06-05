@@ -1,4 +1,4 @@
-# JSON Formator
+# JSON Formatter
 
 [![Build Status](https://github.com/seamile/jsonfmt/actions/workflows/python-package.yml/badge.svg)](https://github.com/seamile/jsonfmt/actions)
 [![PyPI Version](https://img.shields.io/pypi/v/jsonfmt?color=blue&label=Version&logo=python&logoColor=white)](https://pypi.org/project/jsonfmt/)
@@ -20,7 +20,7 @@ It is similar to [jq](https://github.com/jqlang/jq), but simpler.
     - [Show the overview of a large JSON.](#show-the-overview-of-a-large-json)
     - [Copy the result to clipboard.](#copy-the-result-to-clipboard)
 - [3. Minimize the JSON document.](#3-minimize-the-json-document)
-- [4. Pick out parts of a large JSON via JSONPath.](#4-pick-out-parts-of-a-large-json-via-jsonpath)
+- [4. Pick out parts of a large JSON via JSONPath.](#4-pick-out-parts-of-a-large-json-via-jmespath)
 - [5. Convert formats between JSON, TOML and YAML.](#5-convert-formats-between-json-toml-and-yaml)
     - [JSON to TOML and YAML](#json-to-toml-and-yaml)
     - [TOML to JSON and YAML](#toml-to-json-and-yaml)
@@ -58,7 +58,7 @@ $ jsonfmt [options] [files ...]
     - `-i {0-8,t}`: number of spaces for indentation (default: 2)
     - `-o`: show data structure overview
     - `-O`: overwrite the formated text to original file
-    - `-p JSONPATH`: output part of the object via jsonpath
+    - `-p JSONPATH`: output part of the object via jmespath
     - `-s`: sort keys of objects on output
     - `--set 'foo.k1=v1;k2[i]=v2'`: set the keys to values (seperated by `;`)
     - `--pop 'k1;foo.k2;k3[i]'`: pop the specified keys (seperated by `;`)
@@ -219,7 +219,7 @@ $ echo '{
 
 It likes the XPath for xml, which can extract part of the content of a given JSON document through a simple syntax.
 
-JSONPath syntax reference: [goessner.net](https://goessner.net/articles/JsonPath/), [ietf.org](https://datatracker.ietf.org/doc/id/draft-goessner-dispatch-jsonpath-00.html).
+JSONPath syntax reference: [goessner.net](https://goessner.net/articles/JsonPath/), [ietf.org](https://datatracker.ietf.org/doc/id/draft-goessner-dispatch-jmespath-00.html).
 
 Some examples:
 
@@ -372,8 +372,8 @@ $ jsonfmt --set 'skills=["Django","Flask"];money=1000' test/example.json
 #### Pop some items.
 
 ```shell
-# remove the gender field and action[1]
-$ jsonfmt --pop 'gender;action[1]' test/example.json
+# remove the gender field and actions[1]
+$ jsonfmt --pop 'gender;actions[1]' test/example.json
 ```
 
 *Output:*
@@ -396,7 +396,7 @@ $ jsonfmt --pop 'gender;action[1]' test/example.json
 Of course you can use `--set` and `--pop` together.
 
 ```shell
-jsonfmt --set 'skills=["Django","Flask"];money=1000' --pop 'gender;action[1]' test/example.json
+jsonfmt --set 'skills=["Django","Flask"];money=1000' --pop 'gender;actions[1]' test/example.json
 ```
 
 **Note**, however, that the above command will not modify the original JSON file.

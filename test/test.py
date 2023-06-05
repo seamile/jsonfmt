@@ -93,20 +93,20 @@ class JSONFormatToolTestCase(unittest.TestCase):
 
         # exception test
         with patch('jsonfmt.stderr', FakeStdErr()):
-            # test empty jsonpath
-            with self.assertRaises(jsonfmt.JsonPathError):
+            # test empty jmespath
+            with self.assertRaises(jsonfmt.JMESPathError):
                 matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, "")
 
             # test not exists key
-            with self.assertRaises(jsonfmt.JsonPathError):
+            with self.assertRaises(jsonfmt.JMESPathError):
                 jsonfmt.parse_to_pyobj(TOML_TEXT, "$.not_exist_key")
 
             # test index out of range
-            with self.assertRaises(jsonfmt.JsonPathError):
+            with self.assertRaises(jsonfmt.JMESPathError):
                 jsonfmt.parse_to_pyobj(YAML_TEXT, '$.actions[7]')
 
         # test non-json file
-        with self.assertRaises(jsonfmt.ParseError), open(__file__) as fp:
+        with self.assertRaises(jsonfmt.FormatError), open(__file__) as fp:
             text = fp.read()
             matched_obj = jsonfmt.parse_to_pyobj(text, "$.actions[0].calorie")
 
@@ -214,12 +214,12 @@ class JSONFormatToolTestCase(unittest.TestCase):
         self.assertEqual(yaml_text.strip(), YAML_TEXT.strip())
 
         # test exceptions
-        with self.assertRaises(jsonfmt.ParseError):
+        with self.assertRaises(jsonfmt.FormatError):
             jsonfmt.format_to_text([1, 2, 3], 'toml',
                                    compact=False, escape=False,
                                    indent=4, sort_keys=False)
 
-        with self.assertRaises(jsonfmt.ParseError):
+        with self.assertRaises(jsonfmt.FormatError):
             jsonfmt.format_to_text(py_obj, 'xml',
                                    compact=False, escape=False,
                                    indent=4, sort_keys=False)
@@ -256,7 +256,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             indent='2',
             overview=False,
             overwrite=False,
-            jsonpath=None,
+            jmespath=None,
             sort_keys=False,
             set=None,
             pop=None,
@@ -274,7 +274,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             '-i', '4',
             '-o',
             '-O',
-            '-p', 'path/to/json',
+            '-p', 'path.to.json',
             '--set', 'a; b',
             '--pop', 'c; d',
             '-s',
@@ -289,7 +289,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             indent='4',
             overview=True,
             overwrite=True,
-            jsonpath='path/to/json',
+            jmespath='path.to.json',
             sort_keys=True,
             set='a; b',
             pop='c; d',

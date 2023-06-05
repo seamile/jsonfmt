@@ -2,6 +2,7 @@
 '''JSON Format Tool'''
 
 import json
+import jmespath
 import pyperclip
 import re
 import toml
@@ -9,7 +10,7 @@ import yaml
 from argparse import ArgumentParser
 from functools import partial
 from io import TextIOBase
-from jsonpath import jsonpath
+from jmespath.exceptions import JMESPathError
 from pydoc import pager
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
@@ -33,11 +34,7 @@ def print_err(msg: Any):
     print(f'\033[1;91mjsonfmt:\033[0m \033[0;91m{msg}\033[0m', file=stderr)
 
 
-class ParseError(Exception):
-    pass
-
-
-class JsonPathError(Exception):
+class FormatError(Exception):
     pass
 
 
@@ -49,7 +46,7 @@ def is_clipboard_available() -> bool:
 
 
 def parse_to_pyobj(text: str, jpath: Optional[str]) -> Tuple[Any, str]:
-    '''read json, toml or yaml from IO and then match sub-element by jsonpath'''
+    '''read json, toml or yaml from IO and then match sub-element by jmespath'''
     # parse json, toml or yaml to python object
     loads_methods = {
         'json': json.loads,
@@ -65,17 +62,13 @@ def parse_to_pyobj(text: str, jpath: Optional[str]) -> Tuple[Any, str]:
         except Exception:
             continue
     else:
-        raise ParseError("no json, toml or yaml found in the text")
+        raise FormatError("no json, toml or yaml found in the text")
 
     if jpath is None:
         return py_obj, fmt
     else:
-        # match sub-elements via jsonpath
-        subelements = jsonpath(py_obj, jpath)
-        if subelements is False:
-            raise JsonPathError('invalid JSONPath or query result is empty')
-        else:
-            return subelements, fmt
+        # match sub-elements via jmespath
+        return jmespath.search(jpath, py_obj), fmt
 
 
 def forward_by_keys(py_obj: Any, keys: str) -> Tuple[Any, Union[str, int]]:
@@ -151,7 +144,7 @@ def format_to_text(py_obj: Any, fmt: str, *,
     elif fmt == 'toml':
         if not isinstance(py_obj, dict):
             msg = 'the pyobj must be a Mapping when format to toml'
-            raise ParseError(msg)
+            raise FormatError(msg)
         return toml.dumps(py_obj)
 
     elif fmt == 'yaml':
@@ -160,7 +153,7 @@ def format_to_text(py_obj: Any, fmt: str, *,
                               sort_keys=sort_keys)
 
     else:
-        raise ParseError('Unknow format')
+        raise FormatError('Unknow format')
 
 
 def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
@@ -233,8 +226,8 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
                         help='show data structure overview')
     parser.add_argument('-O', dest='overwrite', action='store_true',
                         help='overwrite the formated text to original file')
-    parser.add_argument('-p', dest='jsonpath', type=str,
-                        help='output part of the object via jsonpath')
+    parser.add_argument('-p', dest='jmespath', type=str,
+                        help='output part of the object via jmespath')
     parser.add_argument('-s', dest='sort_keys', action='store_true',
                         help='sort keys of objects on output')
     parser.add_argument('--set', metavar="'foo.k1=v1;k2[i]=v2'",
@@ -273,7 +266,7 @@ def main():
             # read from file
             input_fp = open(file, 'r+') if isinstance(file, str) else file
             process(input_fp,
-                    args.jsonpath,
+                    args.jmespath,
                     args.format,
                     compact=args.compact,
                     cp2clip=cp2clip,
@@ -284,7 +277,9 @@ def main():
                     sort_keys=args.sort_keys,
                     sets=sets,
                     pops=pops)
-        except ParseError as err:
+        except FormatError as err:
+            print_err(err)
+        except JMESPathError as err:
             print_err(err)
         except FileNotFoundError:
             print_err(f'no such file `{file}`')
