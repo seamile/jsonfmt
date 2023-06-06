@@ -287,6 +287,8 @@ def main():
                     pops=pops)
         except FormatError as err:
             print_err(err)
+        except JMESPathError as err:
+            print_err(err)
         except FileNotFoundError:
             print_err(f'no such file: {file}')
         except PermissionError:

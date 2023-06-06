@@ -260,7 +260,70 @@ Some examples:
     ]
     ```
 
+- Show all the keys and actions' length.
+
+    ```shell
+    $ jsonfmt  -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.json
+    ```
+
+    *Output:*
+
+    ```json
+    {
+        "all_keys": [
+            "actions",
+            "age",
+            "gender",
+            "money",
+            "name"
+    ],
+        "actions_len": 2
+    }
+    ```
+
+- Sort `actions` by `calorie` and redefine a dict.
+
+    ```shell
+    $ jsonfmt -p 'sort_by(actions, &calorie)[].{name: name, calorie:calorie}' test/example.json
+    ```
+
+    *Output:*
+
+    ```json
+    [
+        {
+            "name": "sport",
+            "calorie": -375
+        },
+        {
+            "name": "eat",
+            "calorie": 294.9
+        }
+    ]
+    ```
+
 - [More examples](https://jmespath.org/examples.html).
+
+
+**Amazingly**, you can do the same with YAML and TOML using JmesPath, and convert the result format arbitrarily.
+
+```shell
+# read the data from toml file, and convert the result to yaml
+$ jsonfmt  -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.yaml -f toml
+```
+
+*Output:*
+
+```yaml
+all_keys:
+- age
+- gender
+- money
+- name
+- actions
+actions_len: 2
+```
+
 
 ### 5. Convert formats between JSON, TOML and YAML.
 
