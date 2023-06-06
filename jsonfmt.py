@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-'''JSON Format Tool'''
+'''JSON Formatter'''
 
 import json
 import jmespath
@@ -20,7 +20,7 @@ from sys import stdin, stdout, stderr
 from typing import Any, List, IO, Optional, Sequence, Tuple, Union
 from unittest.mock import patch
 
-__version__ = '0.2.4'
+__version__ = '0.2.5'
 
 NUMERIC = re.compile(r'-?\d+$|-?\d+\.\d+$|^-?\d+\.?\d+e-?\d+$')
 DICT_OR_LIST = re.compile(r'^\{.*\}$|^\[.*\]$')
@@ -113,20 +113,20 @@ def modify_pyobj(py_obj: Any, sets: List[str], pops: List[str]):
 
 
 def get_overview(py_obj: Any):
-    def clip_value(value: Any):
+    def clip(value: Any):
         if isinstance(value, str):
             return '...'
         elif isinstance(value, (list, tuple)):
             return []
         elif isinstance(value, dict):
-            return {k: clip_value(v) for k, v in value.items()}
+            return {k: clip(v) for k, v in value.items()}
         else:
             return value
 
-    if isinstance(py_obj, list):
-        return [clip_value(py_obj[0])]
+    if isinstance(py_obj, list) and len(py_obj) > 1:
+        return [clip(py_obj[0])]
     else:
-        return clip_value(py_obj)
+        return clip(py_obj)
 
 
 def format_to_text(py_obj: Any, fmt: str, *,

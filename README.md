@@ -8,7 +8,8 @@
 
 **jsonfmt** is a powerful tool for handling JSON document.
 
-It is similar to [jq](https://github.com/jqlang/jq), but simpler.
+It is as powerful as [jq](https://github.com/jqlang/jq), but simpler.
+
 
 ## Features
 
@@ -20,7 +21,7 @@ It is similar to [jq](https://github.com/jqlang/jq), but simpler.
     - [Show the overview of a large JSON.](#show-the-overview-of-a-large-json)
     - [Copy the result to clipboard.](#copy-the-result-to-clipboard)
 - [3. Minimize the JSON document.](#3-minimize-the-json-document)
-- [4. Pick out parts of a large JSON via JSONPath.](#4-pick-out-parts-of-a-large-json-via-jmespath)
+- [4. Pick out parts of a large JSON via JmesPath.](#4-pick-out-parts-of-a-large-json-via-jmespath)
 - [5. Convert formats between JSON, TOML and YAML.](#5-convert-formats-between-json-toml-and-yaml)
     - [JSON to TOML and YAML](#json-to-toml-and-yaml)
     - [TOML to JSON and YAML](#toml-to-json-and-yaml)
@@ -213,13 +214,15 @@ $ echo '{
 {"age":21,"items":["pen","phone"],"name":"alex"}
 ```
 
-### 4. Pick out parts of a large JSON via JSONPath.
+### 4. Pick out parts of a large JSON via JmesPath.
 
-**JSONPath** is a way to query the sub-elements of a JSON document.
+Unlike from jq's private solution, `jsonfmt` uses [JmesPath](https://jmespath.org/) as its query language.
 
-It likes the XPath for xml, which can extract part of the content of a given JSON document through a simple syntax.
+Among the many JSON query languages, `JmesPath` is the most popular one ([compared here](https://npmtrends.com/JSONPath-vs-jmespath-vs-jq-vs-json-path-vs-json-query-vs-jsonata-vs-jsonpath-vs-jsonpath-plus-vs-node-jq)).
+It is more general than `jq`, and more intuitive and powerful than `JsonPath`.
 
-JSONPath syntax reference: [goessner.net](https://goessner.net/articles/JsonPath/), [ietf.org](https://datatracker.ietf.org/doc/id/draft-goessner-dispatch-jmespath-00.html).
+Like the XPath for xml, `JmesPath` can elegantly extract parts of a given JSON document with simple syntax.
+See the tutorial [here](https://jmespath.org/tutorial.html).
 
 Some examples:
 
@@ -227,6 +230,22 @@ Some examples:
 
     ```shell
     $ jsonfmt -p 'actions[0]' test/example.json
+    ```
+
+    *Output:*
+
+    ```json
+    {
+        "calorie": 294.9,
+        "date": "2021-03-02",
+        "name": "eat"
+    }
+    ```
+
+- Filter all items in `actions` with `calorie` > 0.
+
+    ```shell
+    $ jsonfmt -p 'actions[?calorie>`0`]' test/example.json
     ```
 
     *Output:*
@@ -241,21 +260,7 @@ Some examples:
     ]
     ```
 
-- Filters all occurrences of the `name` field in the JSON.
-
-    ```shell
-    $ jsonfmt -p '$..name' test/example.json
-    ```
-
-    *Output:*
-
-    ```json
-    [
-        "Bob",
-        "eat",
-        "sport"
-    ]
-    ```
+- [More examples](https://jmespath.org/examples.html).
 
 ### 5. Convert formats between JSON, TOML and YAML.
 

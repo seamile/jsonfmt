@@ -84,31 +84,28 @@ class JSONFormatToolTestCase(unittest.TestCase):
 
     def test_parse_to_pyobj(self):
         # normal parameters test
-        matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, "$.actions[:].calorie")
+        matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, "actions[:].calorie")
         self.assertEqual(matched_obj, ([294.9, -375], 'json'))
-        matched_obj = jsonfmt.parse_to_pyobj(TOML_TEXT, "$.actions.*.name")
+        matched_obj = jsonfmt.parse_to_pyobj(TOML_TEXT, "actions[*].name")
         self.assertEqual(matched_obj, (['eat', 'sport'], 'toml'))
-        matched_obj = jsonfmt.parse_to_pyobj(YAML_TEXT, "$.actions.*.date")
+        matched_obj = jsonfmt.parse_to_pyobj(YAML_TEXT, "actions[*].date")
         self.assertEqual(matched_obj, (['2021-03-02', '2023-04-27'], 'yaml'))
+        # test not exists key
+        matched_obj = jsonfmt.parse_to_pyobj(TOML_TEXT, "not_exist_key")
+        self.assertEqual(matched_obj, (None, 'toml'))
+        # test index out of range
+        matched_obj = jsonfmt.parse_to_pyobj(YAML_TEXT, 'actions[7]')
+        self.assertEqual(matched_obj, (None, 'yaml'))
 
-        # exception test
-        with patch('jsonfmt.stderr', FakeStdErr()):
-            # test empty jmespath
-            with self.assertRaises(jsonfmt.JMESPathError):
-                matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, "")
+        # test empty jmespath
+        with patch('jsonfmt.stderr', FakeStdErr()), \
+                self.assertRaises(jsonfmt.JMESPathError):
+            matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, "")
 
-            # test not exists key
-            with self.assertRaises(jsonfmt.JMESPathError):
-                jsonfmt.parse_to_pyobj(TOML_TEXT, "$.not_exist_key")
-
-            # test index out of range
-            with self.assertRaises(jsonfmt.JMESPathError):
-                jsonfmt.parse_to_pyobj(YAML_TEXT, '$.actions[7]')
-
-        # test non-json file
+        # test for unsupported format
         with self.assertRaises(jsonfmt.FormatError), open(__file__) as fp:
             text = fp.read()
-            matched_obj = jsonfmt.parse_to_pyobj(text, "$.actions[0].calorie")
+            matched_obj = jsonfmt.parse_to_pyobj(text, "actions[0].calorie")
 
     def test_modify_pyobj_for_adding(self):
         # test empty sets and pops
@@ -299,11 +296,11 @@ class JSONFormatToolTestCase(unittest.TestCase):
         actual_args = jsonfmt.parse_cmdline_args(args=args)
         self.assertEqual(actual_args, expected_args)
 
-    @patch.multiple(sys, argv=['jsonfmt', '-i', 't', '-p', '$.name',
+    @patch.multiple(sys, argv=['jsonfmt', '-i', 't', '-p', 'actions[*].name',
                                f'{BASE_DIR}/test/example.json'])
     @patch.multiple(jsonfmt, stdout=FakeStdOut())
     def test_main_with_file(self):
-        expected_output = color('[\n\t"Bob"\n]', 'json')
+        expected_output = color('[\n\t"eat",\n\t"sport"\n]', 'json')
         jsonfmt.main()
         self.assertEqual(jsonfmt.stdout.read(), expected_output)
 
