@@ -2,23 +2,25 @@
 '''JSON Formatter'''
 
 import json
-import jmespath
-import pyperclip
 import re
 import toml
 import yaml
 from argparse import ArgumentParser
 from functools import partial
 from io import TextIOBase
-from jmespath.exceptions import JMESPathError
 from pydoc import pager
+from shutil import get_terminal_size
+from sys import stdin, stdout, stderr, exit as sys_exit
+from typing import Any, List, IO, Optional, Sequence, Tuple, Union
+from unittest.mock import patch
+
+import jmespath
+import pyperclip
+from jmespath.exceptions import JMESPathError
+from jmespath.parser import ParsedResult
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
-from shutil import get_terminal_size
-from sys import stdin, stdout, stderr
-from typing import Any, List, IO, Optional, Sequence, Tuple, Union
-from unittest.mock import patch
 
 __version__ = '0.2.5'
 
@@ -45,7 +47,7 @@ def is_clipboard_available() -> bool:
         and paste_fn.__class__.__name__ != 'ClipboardUnavailable'
 
 
-def parse_to_pyobj(text: str, jpath: Optional[str]) -> Tuple[Any, str]:
+def parse_to_pyobj(text: str, jpath: Optional[ParsedResult]) -> Tuple[Any, str]:
     '''read json, toml or yaml from IO and then match sub-element by jmespath'''
     # parse json, toml or yaml to python object
     loads_methods = {
@@ -68,7 +70,7 @@ def parse_to_pyobj(text: str, jpath: Optional[str]) -> Tuple[Any, str]:
         return py_obj, fmt
     else:
         # match sub-elements via jmespath
-        return jmespath.search(jpath, py_obj), fmt
+        return jpath.search(py_obj), fmt
 
 
 def forward_by_keys(py_obj: Any, keys: str) -> Tuple[Any, Union[str, int]]:
@@ -160,7 +162,7 @@ def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
     # copy the result to clipboard
     if cp2clip:
         pyperclip.copy(text)
-        print_inf('result copied to clipboard.')
+        print_inf('result copied to clipboard')
         return
     elif output_fp.isatty():
         # highlight the text when output to TTY divice
@@ -178,11 +180,11 @@ def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
         output_fp.truncate()
         output_fp.write(text)
         if output_fp.fileno() > 2:
-            print_inf(f'result written to {output_fp.name}.')
+            print_inf(f'result written to {output_fp.name}')
 
 
-def process(input_fp: IO, jpath: Optional[str], convert_fmt: Optional[str], *,
-            compact: bool, cp2clip: bool, escape: bool, indent: Union[int, str],
+def process(input_fp: IO, jpath: Optional[ParsedResult], convert_fmt: Optional[str],
+            *, compact: bool, cp2clip: bool, escape: bool, indent: Union[int, str],
             overview: bool, overwrite: bool, sort_keys: bool,
             sets: Optional[list], pops: Optional[list]):
     # parse and format
@@ -244,6 +246,12 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
 def main():
     args = parse_cmdline_args()
 
+    try:
+        jpath = None if args.jmespath is None else jmespath.compile(args.jmespath)
+    except JMESPathError:
+        print_err(f'invalid JMESPath expression: {args.jmespath}')
+        sys_exit(1)
+
     # check if the clipboard is available
     cp2clip = args.cp2clip and is_clipboard_available()
     if args.cp2clip and not cp2clip:
@@ -266,7 +274,7 @@ def main():
             # read from file
             input_fp = open(file, 'r+') if isinstance(file, str) else file
             process(input_fp,
-                    args.jmespath,
+                    jpath,
                     args.format,
                     compact=args.compact,
                     cp2clip=cp2clip,
@@ -279,10 +287,10 @@ def main():
                     pops=pops)
         except FormatError as err:
             print_err(err)
-        except JMESPathError as err:
-            print_err(err)
         except FileNotFoundError:
-            print_err(f'no such file `{file}`')
+            print_err(f'no such file: {file}')
+        except PermissionError:
+            print_err(f'permission denied: {file}')
         finally:
             input_fp = locals().get('input_fp')
             if isinstance(input_fp, TextIOBase):
