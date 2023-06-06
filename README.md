@@ -309,7 +309,7 @@ Some examples:
 
 ```shell
 # read the data from toml file, and convert the result to yaml
-$ jsonfmt  -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.yaml -f toml
+$ jsonfmt -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.toml -f yaml
 ```
 
 *Output:*

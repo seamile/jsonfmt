@@ -22,7 +22,7 @@ from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 
-__version__ = '0.2.5'
+__version__ = '0.2.6'
 
 NUMERIC = re.compile(r'-?\d+$|-?\d+\.\d+$|^-?\d+\.?\d+e-?\d+$')
 DICT_OR_LIST = re.compile(r'^\{.*\}$|^\[.*\]$')
