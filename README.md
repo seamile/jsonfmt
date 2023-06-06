@@ -1,4 +1,4 @@
-# JSON Formator
+# JSON Formatter
 
 [![Build Status](https://github.com/seamile/jsonfmt/actions/workflows/python-package.yml/badge.svg)](https://github.com/seamile/jsonfmt/actions)
 [![PyPI Version](https://img.shields.io/pypi/v/jsonfmt?color=blue&label=Version&logo=python&logoColor=white)](https://pypi.org/project/jsonfmt/)
@@ -8,7 +8,8 @@
 
 **jsonfmt** is a powerful tool for handling JSON document.
 
-It is similar to [jq](https://github.com/jqlang/jq), but simpler.
+It is as powerful as [jq](https://github.com/jqlang/jq), but simpler.
+
 
 ## Features
 
@@ -20,7 +21,7 @@ It is similar to [jq](https://github.com/jqlang/jq), but simpler.
     - [Show the overview of a large JSON.](#show-the-overview-of-a-large-json)
     - [Copy the result to clipboard.](#copy-the-result-to-clipboard)
 - [3. Minimize the JSON document.](#3-minimize-the-json-document)
-- [4. Pick out parts of a large JSON via JSONPath.](#4-pick-out-parts-of-a-large-json-via-jsonpath)
+- [4. Pick out parts of a large JSON via JmesPath.](#4-pick-out-parts-of-a-large-json-via-jmespath)
 - [5. Convert formats between JSON, TOML and YAML.](#5-convert-formats-between-json-toml-and-yaml)
     - [JSON to TOML and YAML](#json-to-toml-and-yaml)
     - [TOML to JSON and YAML](#toml-to-json-and-yaml)
@@ -58,7 +59,7 @@ $ jsonfmt [options] [files ...]
     - `-i {0-8,t}`: number of spaces for indentation (default: 2)
     - `-o`: show data structure overview
     - `-O`: overwrite the formated text to original file
-    - `-p JSONPATH`: output part of the object via jsonpath
+    - `-p JSONPATH`: output part of the object via jmespath
     - `-s`: sort keys of objects on output
     - `--set 'foo.k1=v1;k2[i]=v2'`: set the keys to values (seperated by `;`)
     - `--pop 'k1;foo.k2;k3[i]'`: pop the specified keys (seperated by `;`)
@@ -213,13 +214,15 @@ $ echo '{
 {"age":21,"items":["pen","phone"],"name":"alex"}
 ```
 
-### 4. Pick out parts of a large JSON via JSONPath.
+### 4. Pick out parts of a large JSON via JmesPath.
 
-**JSONPath** is a way to query the sub-elements of a JSON document.
+Unlike from jq's private solution, `jsonfmt` uses [JmesPath](https://jmespath.org/) as its query language.
 
-It likes the XPath for xml, which can extract part of the content of a given JSON document through a simple syntax.
+Among the many JSON query languages, `JmesPath` is the most popular one ([compared here](https://npmtrends.com/JSONPath-vs-jmespath-vs-jq-vs-json-path-vs-json-query-vs-jsonata-vs-jsonpath-vs-jsonpath-plus-vs-node-jq)).
+It is more general than `jq`, and more intuitive and powerful than `JsonPath`.
 
-JSONPath syntax reference: [goessner.net](https://goessner.net/articles/JsonPath/), [ietf.org](https://datatracker.ietf.org/doc/id/draft-goessner-dispatch-jsonpath-00.html).
+Like the XPath for xml, `JmesPath` can elegantly extract parts of a given JSON document with simple syntax.
+See the tutorial [here](https://jmespath.org/tutorial.html).
 
 Some examples:
 
@@ -227,6 +230,22 @@ Some examples:
 
     ```shell
     $ jsonfmt -p 'actions[0]' test/example.json
+    ```
+
+    *Output:*
+
+    ```json
+    {
+        "calorie": 294.9,
+        "date": "2021-03-02",
+        "name": "eat"
+    }
+    ```
+
+- Filter all items in `actions` with `calorie` > 0.
+
+    ```shell
+    $ jsonfmt -p 'actions[?calorie>`0`]' test/example.json
     ```
 
     *Output:*
@@ -241,21 +260,70 @@ Some examples:
     ]
     ```
 
-- Filters all occurrences of the `name` field in the JSON.
+- Show all the keys and actions' length.
 
     ```shell
-    $ jsonfmt -p '$..name' test/example.json
+    $ jsonfmt  -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.json
+    ```
+
+    *Output:*
+
+    ```json
+    {
+        "all_keys": [
+            "actions",
+            "age",
+            "gender",
+            "money",
+            "name"
+    ],
+        "actions_len": 2
+    }
+    ```
+
+- Sort `actions` by `calorie` and redefine a dict.
+
+    ```shell
+    $ jsonfmt -p 'sort_by(actions, &calorie)[].{name: name, calorie:calorie}' test/example.json
     ```
 
     *Output:*
 
     ```json
     [
-        "Bob",
-        "eat",
-        "sport"
+        {
+            "name": "sport",
+            "calorie": -375
+        },
+        {
+            "name": "eat",
+            "calorie": 294.9
+        }
     ]
     ```
+
+- [More examples](https://jmespath.org/examples.html).
+
+
+**Amazingly**, you can do the same with YAML and TOML using JmesPath, and convert the result format arbitrarily.
+
+```shell
+# read the data from toml file, and convert the result to yaml
+$ jsonfmt  -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.yaml -f toml
+```
+
+*Output:*
+
+```yaml
+all_keys:
+- age
+- gender
+- money
+- name
+- actions
+actions_len: 2
+```
+
 
 ### 5. Convert formats between JSON, TOML and YAML.
 
@@ -372,8 +440,8 @@ $ jsonfmt --set 'skills=["Django","Flask"];money=1000' test/example.json
 #### Pop some items.
 
 ```shell
-# remove the gender field and action[1]
-$ jsonfmt --pop 'gender;action[1]' test/example.json
+# remove the gender field and actions[1]
+$ jsonfmt --pop 'gender;actions[1]' test/example.json
 ```
 
 *Output:*
@@ -396,7 +464,7 @@ $ jsonfmt --pop 'gender;action[1]' test/example.json
 Of course you can use `--set` and `--pop` together.
 
 ```shell
-jsonfmt --set 'skills=["Django","Flask"];money=1000' --pop 'gender;action[1]' test/example.json
+jsonfmt --set 'skills=["Django","Flask"];money=1000' --pop 'gender;actions[1]' test/example.json
 ```
 
 **Note**, however, that the above command will not modify the original JSON file.

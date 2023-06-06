@@ -9,10 +9,10 @@ requires-python = ">=3.8"
 license = {text = "MIT License"}
 description = "A simple tool for formatting JSON object."
 readme = "README.md"
-keywords = ["json", "formatter", "pretty-print", "highlight", "jsonpath"]
+keywords = ["json", "formatter", "pretty-print", "highlight", "jmespath"]
 authors = [{name = "Seamile", email = "lanhuermao@gmail.com"}]
 dependencies = [
-    "jsonpath==0.82",
+    "jmespath >= 1.0.1",
     "Pygments >= 2.13.0",
     "pyperclip >= 1.8.2",
     "pyyaml >= 6.0",

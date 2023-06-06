@@ -8,6 +8,7 @@ from argparse import Namespace
 from copy import deepcopy
 from functools import partial
 from io import StringIO
+from jmespath import compile as jp_compile
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, YamlLexer, TOMLLexer
@@ -17,14 +18,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
 import jsonfmt
 
-
-with open(f'{BASE_DIR}/test/example.json') as json_fp:
+JSON_FILE = f'{BASE_DIR}/test/example.json'
+with open(JSON_FILE) as json_fp:
     JSON_TEXT = json_fp.read()
 
-with open(f'{BASE_DIR}/test/example.toml') as toml_fp:
+TOML_FILE = f'{BASE_DIR}/test/example.toml'
+with open(TOML_FILE) as toml_fp:
     TOML_TEXT = toml_fp.read()
 
-with open(f'{BASE_DIR}/test/example.yaml') as yaml_fp:
+YAML_FILE = f'{BASE_DIR}/test/example.yaml'
+with open(YAML_FILE) as yaml_fp:
     YAML_TEXT = yaml_fp.read()
 
 
@@ -44,12 +47,21 @@ def color(text, format):
 
 
 class FakeStdStream(StringIO):
+
+    def __init__(self, initial_value='', newline='\n', tty=True):
+        super().__init__(initial_value, newline)
+        self._istty = tty
+
     def isatty(self):
-        return True
+        return self._istty
 
     def read(self):
         self.seek(0)
-        return super().read()
+        content = super().read()
+
+        self.seek(0)
+        self.truncate()
+        return content
 
 
 class FakeStdIn(FakeStdStream):
@@ -84,31 +96,27 @@ class JSONFormatToolTestCase(unittest.TestCase):
 
     def test_parse_to_pyobj(self):
         # normal parameters test
-        matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, "$.actions[:].calorie")
+        matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, jp_compile("actions[:].calorie"))
         self.assertEqual(matched_obj, ([294.9, -375], 'json'))
-        matched_obj = jsonfmt.parse_to_pyobj(TOML_TEXT, "$.actions.*.name")
+        matched_obj = jsonfmt.parse_to_pyobj(TOML_TEXT, jp_compile("actions[*].name"))
         self.assertEqual(matched_obj, (['eat', 'sport'], 'toml'))
-        matched_obj = jsonfmt.parse_to_pyobj(YAML_TEXT, "$.actions.*.date")
+        matched_obj = jsonfmt.parse_to_pyobj(YAML_TEXT, jp_compile("actions[*].date"))
         self.assertEqual(matched_obj, (['2021-03-02', '2023-04-27'], 'yaml'))
+        # test not exists key
+        matched_obj = jsonfmt.parse_to_pyobj(TOML_TEXT, jp_compile("not_exist_key"))
+        self.assertEqual(matched_obj, (None, 'toml'))
+        # test index out of range
+        matched_obj = jsonfmt.parse_to_pyobj(YAML_TEXT, jp_compile('actions[7]'))
+        self.assertEqual(matched_obj, (None, 'yaml'))
 
-        # exception test
-        with patch('jsonfmt.stderr', FakeStdErr()):
-            # test empty jsonpath
-            with self.assertRaises(jsonfmt.JsonPathError):
-                matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, "")
+        # test empty jmespath
+        with patch('jsonfmt.stderr', FakeStdErr()), self.assertRaises(jsonfmt.JMESPathError):
+            matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, jp_compile(""))
 
-            # test not exists key
-            with self.assertRaises(jsonfmt.JsonPathError):
-                jsonfmt.parse_to_pyobj(TOML_TEXT, "$.not_exist_key")
-
-            # test index out of range
-            with self.assertRaises(jsonfmt.JsonPathError):
-                jsonfmt.parse_to_pyobj(YAML_TEXT, '$.actions[7]')
-
-        # test non-json file
-        with self.assertRaises(jsonfmt.ParseError), open(__file__) as fp:
+        # test for unsupported format
+        with self.assertRaises(jsonfmt.FormatError), open(__file__) as fp:
             text = fp.read()
-            matched_obj = jsonfmt.parse_to_pyobj(text, "$.actions[0].calorie")
+            matched_obj = jsonfmt.parse_to_pyobj(text, jp_compile("actions[0].calorie"))
 
     def test_modify_pyobj_for_adding(self):
         # test empty sets and pops
@@ -214,12 +222,12 @@ class JSONFormatToolTestCase(unittest.TestCase):
         self.assertEqual(yaml_text.strip(), YAML_TEXT.strip())
 
         # test exceptions
-        with self.assertRaises(jsonfmt.ParseError):
+        with self.assertRaises(jsonfmt.FormatError):
             jsonfmt.format_to_text([1, 2, 3], 'toml',
                                    compact=False, escape=False,
                                    indent=4, sort_keys=False)
 
-        with self.assertRaises(jsonfmt.ParseError):
+        with self.assertRaises(jsonfmt.FormatError):
             jsonfmt.format_to_text(py_obj, 'xml',
                                    compact=False, escape=False,
                                    indent=4, sort_keys=False)
@@ -256,7 +264,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             indent='2',
             overview=False,
             overwrite=False,
-            jsonpath=None,
+            jmespath=None,
             sort_keys=False,
             set=None,
             pop=None,
@@ -274,7 +282,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             '-i', '4',
             '-o',
             '-O',
-            '-p', 'path/to/json',
+            '-p', 'path.to.json',
             '--set', 'a; b',
             '--pop', 'c; d',
             '-s',
@@ -289,7 +297,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             indent='4',
             overview=True,
             overwrite=True,
-            jsonpath='path/to/json',
+            jmespath='path.to.json',
             sort_keys=True,
             set='a; b',
             pop='c; d',
@@ -299,11 +307,11 @@ class JSONFormatToolTestCase(unittest.TestCase):
         actual_args = jsonfmt.parse_cmdline_args(args=args)
         self.assertEqual(actual_args, expected_args)
 
-    @patch.multiple(sys, argv=['jsonfmt', '-i', 't', '-p', '$.name',
-                               f'{BASE_DIR}/test/example.json'])
+    @patch.multiple(sys, argv=['jsonfmt', '-i', 't', '-p', 'actions[*].name',
+                               JSON_FILE])
     @patch.multiple(jsonfmt, stdout=FakeStdOut())
     def test_main_with_file(self):
-        expected_output = color('[\n\t"Bob"\n]', 'json')
+        expected_output = color('[\n\t"eat",\n\t"sport"\n]', 'json')
         jsonfmt.main()
         self.assertEqual(jsonfmt.stdout.read(), expected_output)
 
@@ -314,97 +322,100 @@ class JSONFormatToolTestCase(unittest.TestCase):
         jsonfmt.main()
         self.assertEqual(jsonfmt.stdout.read(), expected_output)
 
-    @patch.multiple(sys, argv=['jsonfmt', 'not_exist_file.json', __file__])
     @patch.multiple(jsonfmt, stderr=FakeStdErr())
-    def test_main_invalid_file(self):
-        jsonfmt.main()
-        errmsg = jsonfmt.stderr.read()
-        self.assertIn('no such file `not_exist_file.json`', errmsg)
-        self.assertIn('no json, toml or yaml found', errmsg)
-
-    @patch.multiple(sys, argv=['jsonfmt', '-f', 'json'])
-    @patch.multiple(jsonfmt, stdin=FakeStdIn(']a, b, c]'), stderr=FakeStdErr())
     def test_main_invalid_input(self):
-        jsonfmt.main()
-        self.assertIn('no json, toml or yaml found', jsonfmt.stderr.read())
+        # test not exist file and wrong format
+        with patch.multiple(sys, argv=['jsonfmt', 'not_exist_file.json', __file__]):
+            jsonfmt.main()
+            errmsg = jsonfmt.stderr.read()
+            self.assertIn('no such file: not_exist_file.json', errmsg)
+            self.assertIn('no json, toml or yaml found', errmsg)
 
-    @patch.multiple(sys, argv=['jsonfmt', '-f', 'toml'])
-    @patch.multiple(jsonfmt, stdin=FakeStdIn(JSON_TEXT), stdout=FakeStdOut())
-    def test_json_to_toml(self):
-        colored_output = color(TOML_TEXT, 'toml')
-        jsonfmt.main()
-        self.assertEqual(jsonfmt.stdout.read(), colored_output)
+        # test wrong jmespath
+        with patch('sys.argv', ['jsonfmt', JSON_FILE, '-p', '$.-[=]']),\
+                self.assertRaises(SystemExit):
+            jsonfmt.main()
+        self.assertIn('invalid JMESPath expression', jsonfmt.stderr.read())
 
-    @patch.multiple(sys, argv=['jsonfmt', '-s', '-f', 'yaml'])
-    @patch.multiple(jsonfmt, stdin=FakeStdIn(TOML_TEXT), stdout=FakeStdOut())
-    def test_toml_to_yaml(self):
-        colored_output = color(YAML_TEXT, 'yaml')
-        jsonfmt.main()
-        self.assertEqual(jsonfmt.stdout.read(), colored_output)
+    @patch('jsonfmt.stdout', FakeStdOut())
+    def test_main_convert(self):
+        # test json to toml
+        with patch.multiple(sys, argv=['jsonfmt', '-f', 'toml', JSON_FILE]):
+            colored_output = color(TOML_TEXT, 'toml')
+            jsonfmt.main()
+            self.assertEqual(jsonfmt.stdout.read(), colored_output)
 
-    @patch.multiple(sys, argv=['jsonfmt', '-c', '-f', 'json'])
-    @patch.multiple(jsonfmt, stdin=FakeStdIn(YAML_TEXT), stdout=FakeStdOut())
-    def test_yaml_to_json(self):
-        colored_output = color(JSON_TEXT, 'json')
-        jsonfmt.main()
-        self.assertEqual(jsonfmt.stdout.read(), colored_output)
+        # test toml to yaml
+        with patch.multiple(sys, argv=['jsonfmt', '-s', '-f', 'yaml', TOML_FILE]):
+            colored_output = color(YAML_TEXT, 'yaml')
+            jsonfmt.main()
+            self.assertEqual(jsonfmt.stdout.read(), colored_output)
 
-    @patch.multiple(sys, argv=['jsonfmt', '-Ocsf', 'json',
-                               f'{BASE_DIR}/test/example.toml'])
-    def test_overwrite_to_original_file(self):
+        # test yaml to json
+        with patch.multiple(sys, argv=['jsonfmt', '-c', '-f', 'json', YAML_FILE]):
+            colored_output = color(JSON_TEXT, 'json')
+            jsonfmt.main()
+            self.assertEqual(jsonfmt.stdout.read(), colored_output)
+
+    @patch.multiple(sys, argv=['jsonfmt', '-oc'])
+    @patch.multiple(jsonfmt, stdin=FakeStdIn('{"a": "asfd", "b": [1, 2, 3]}'), stdout=FakeStdOut(tty=False))
+    def test_main_overview(self):
+        jsonfmt.main()
+        self.assertEqual(jsonfmt.stdout.read(), '{"a":"...","b":[]}')
+
+    @patch('sys.argv', ['jsonfmt', '-Ocsf', 'json', TOML_FILE])
+    def test_main_overwrite_to_original_file(self):
         try:
             jsonfmt.main()
-            with open(f'{BASE_DIR}/test/example.toml') as toml_fp:
+            with open(TOML_FILE) as toml_fp:
                 new_content = toml_fp.read().strip()
             self.assertEqual(new_content, JSON_TEXT.strip())
         finally:
-            with open(f'{BASE_DIR}/test/example.toml', 'w') as toml_fp:
+            with open(TOML_FILE, 'w') as toml_fp:
                 toml_fp.write(TOML_TEXT)
 
     @patch.multiple(jsonfmt, stdout=FakeStdOut(), stderr=FakeStdErr())
-    def test_copy_to_clipboard(self):
+    def test_main_copy_to_clipboard(self):
         if jsonfmt.is_clipboard_available():
             with patch("sys.argv",
-                       ['jsonfmt', '-Ccs', f'{BASE_DIR}/test/example.json']):
+                       ['jsonfmt', '-Ccs', JSON_FILE]):
                 jsonfmt.main()
                 copied_text = pyperclip.paste().strip()
                 self.assertEqual(copied_text, JSON_TEXT.strip())
 
             with patch("sys.argv",
-                       ['jsonfmt', '-Cs', f'{BASE_DIR}/test/example.toml']):
+                       ['jsonfmt', '-Cs', TOML_FILE]):
                 jsonfmt.main()
                 copied_text = pyperclip.paste().strip()
                 self.assertEqual(copied_text, TOML_TEXT.strip())
 
             with patch("sys.argv",
-                       ['jsonfmt', '-Cs', f'{BASE_DIR}/test/example.yaml']):
+                       ['jsonfmt', '-Cs', YAML_FILE]):
                 jsonfmt.main()
                 copied_text = pyperclip.paste().strip()
                 self.assertEqual(copied_text, YAML_TEXT.strip())
 
     @patch.multiple(jsonfmt, is_clipboard_available=lambda: False)
     @patch.multiple(jsonfmt, stdout=FakeStdOut(), stderr=FakeStdErr())
-    @patch.multiple(sys, argv=['jsonfmt', f'{BASE_DIR}/test/example.json', '-cC'])
-    def test_clipboard_unavailable(self):
+    @patch.multiple(sys, argv=['jsonfmt', JSON_FILE, '-cC'])
+    def test_main_clipboard_unavailable(self):
         errmsg = '\033[1;91mjsonfmt:\033[0m \033[0;91mclipboard unavailable\033[0m\n'
         jsonfmt.main()
         self.assertEqual(jsonfmt.stderr.read(), errmsg)
         self.assertEqual(jsonfmt.stdout.read(), color(JSON_TEXT, 'json'))
 
-    @patch.multiple(sys, argv=['jsonfmt', '-O', f'{BASE_DIR}/test/example.json',
-                               '--set', 'age=32; box=[1,2,3]',
-                               '--pop', 'money; actions.1'])
-    def test_modify_and_pop(self):
+    @patch.multiple(sys, argv=['jsonfmt', '--set', 'age=32; box=[1,2,3]', '--pop', 'money; actions.1'])
+    @patch.multiple(jsonfmt, stdin=FakeStdIn(JSON_TEXT), stdout=FakeStdOut(tty=False))
+    def test_main_modify_and_pop(self):
         try:
             jsonfmt.main()
-            with open(f'{BASE_DIR}/test/example.json') as fp:
-                py_obj = json.load(fp)
+            py_obj = json.loads(jsonfmt.stdout.read())
             self.assertEqual(py_obj['age'], 32)
             self.assertEqual(py_obj['box'], [1, 2, 3])
             self.assertNotIn('money', py_obj)
             self.assertEqual(len(py_obj['actions']), 1)
         finally:
-            with open(f'{BASE_DIR}/test/example.json', 'w') as fp:
+            with open(JSON_FILE, 'w') as fp:
                 fp.write(JSON_TEXT)
 
 

@@ -1,25 +1,28 @@
 #!/usr/bin/env python
-'''JSON Format Tool'''
+'''JSON Formatter'''
 
 import json
-import pyperclip
 import re
 import toml
 import yaml
 from argparse import ArgumentParser
 from functools import partial
 from io import TextIOBase
-from jsonpath import jsonpath
 from pydoc import pager
-from pygments import highlight
-from pygments.formatters import TerminalFormatter
-from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 from shutil import get_terminal_size
-from sys import stdin, stdout, stderr
+from sys import stdin, stdout, stderr, exit as sys_exit
 from typing import Any, List, IO, Optional, Sequence, Tuple, Union
 from unittest.mock import patch
 
-__version__ = '0.2.4'
+import jmespath
+import pyperclip
+from jmespath.exceptions import JMESPathError
+from jmespath.parser import ParsedResult
+from pygments import highlight
+from pygments.formatters import TerminalFormatter
+from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
+
+__version__ = '0.2.5'
 
 NUMERIC = re.compile(r'-?\d+$|-?\d+\.\d+$|^-?\d+\.?\d+e-?\d+$')
 DICT_OR_LIST = re.compile(r'^\{.*\}$|^\[.*\]$')
@@ -33,11 +36,7 @@ def print_err(msg: Any):
     print(f'\033[1;91mjsonfmt:\033[0m \033[0;91m{msg}\033[0m', file=stderr)
 
 
-class ParseError(Exception):
-    pass
-
-
-class JsonPathError(Exception):
+class FormatError(Exception):
     pass
 
 
@@ -48,8 +47,8 @@ def is_clipboard_available() -> bool:
         and paste_fn.__class__.__name__ != 'ClipboardUnavailable'
 
 
-def parse_to_pyobj(text: str, jpath: Optional[str]) -> Tuple[Any, str]:
-    '''read json, toml or yaml from IO and then match sub-element by jsonpath'''
+def parse_to_pyobj(text: str, jpath: Optional[ParsedResult]) -> Tuple[Any, str]:
+    '''read json, toml or yaml from IO and then match sub-element by jmespath'''
     # parse json, toml or yaml to python object
     loads_methods = {
         'json': json.loads,
@@ -65,17 +64,13 @@ def parse_to_pyobj(text: str, jpath: Optional[str]) -> Tuple[Any, str]:
         except Exception:
             continue
     else:
-        raise ParseError("no json, toml or yaml found in the text")
+        raise FormatError("no json, toml or yaml found in the text")
 
     if jpath is None:
         return py_obj, fmt
     else:
-        # match sub-elements via jsonpath
-        subelements = jsonpath(py_obj, jpath)
-        if subelements is False:
-            raise JsonPathError('invalid JSONPath or query result is empty')
-        else:
-            return subelements, fmt
+        # match sub-elements via jmespath
+        return jpath.search(py_obj), fmt
 
 
 def forward_by_keys(py_obj: Any, keys: str) -> Tuple[Any, Union[str, int]]:
@@ -120,20 +115,20 @@ def modify_pyobj(py_obj: Any, sets: List[str], pops: List[str]):
 
 
 def get_overview(py_obj: Any):
-    def clip_value(value: Any):
+    def clip(value: Any):
         if isinstance(value, str):
             return '...'
         elif isinstance(value, (list, tuple)):
             return []
         elif isinstance(value, dict):
-            return {k: clip_value(v) for k, v in value.items()}
+            return {k: clip(v) for k, v in value.items()}
         else:
             return value
 
-    if isinstance(py_obj, list):
-        return [clip_value(py_obj[0])]
+    if isinstance(py_obj, list) and len(py_obj) > 1:
+        return [clip(py_obj[0])]
     else:
-        return clip_value(py_obj)
+        return clip(py_obj)
 
 
 def format_to_text(py_obj: Any, fmt: str, *,
@@ -151,7 +146,7 @@ def format_to_text(py_obj: Any, fmt: str, *,
     elif fmt == 'toml':
         if not isinstance(py_obj, dict):
             msg = 'the pyobj must be a Mapping when format to toml'
-            raise ParseError(msg)
+            raise FormatError(msg)
         return toml.dumps(py_obj)
 
     elif fmt == 'yaml':
@@ -160,14 +155,14 @@ def format_to_text(py_obj: Any, fmt: str, *,
                               sort_keys=sort_keys)
 
     else:
-        raise ParseError('Unknow format')
+        raise FormatError('Unknow format')
 
 
 def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
     # copy the result to clipboard
     if cp2clip:
         pyperclip.copy(text)
-        print_inf('result copied to clipboard.')
+        print_inf('result copied to clipboard')
         return
     elif output_fp.isatty():
         # highlight the text when output to TTY divice
@@ -185,11 +180,11 @@ def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
         output_fp.truncate()
         output_fp.write(text)
         if output_fp.fileno() > 2:
-            print_inf(f'result written to {output_fp.name}.')
+            print_inf(f'result written to {output_fp.name}')
 
 
-def process(input_fp: IO, jpath: Optional[str], convert_fmt: Optional[str], *,
-            compact: bool, cp2clip: bool, escape: bool, indent: Union[int, str],
+def process(input_fp: IO, jpath: Optional[ParsedResult], convert_fmt: Optional[str],
+            *, compact: bool, cp2clip: bool, escape: bool, indent: Union[int, str],
             overview: bool, overwrite: bool, sort_keys: bool,
             sets: Optional[list], pops: Optional[list]):
     # parse and format
@@ -233,8 +228,8 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
                         help='show data structure overview')
     parser.add_argument('-O', dest='overwrite', action='store_true',
                         help='overwrite the formated text to original file')
-    parser.add_argument('-p', dest='jsonpath', type=str,
-                        help='output part of the object via jsonpath')
+    parser.add_argument('-p', dest='jmespath', type=str,
+                        help='output part of the object via jmespath')
     parser.add_argument('-s', dest='sort_keys', action='store_true',
                         help='sort keys of objects on output')
     parser.add_argument('--set', metavar="'foo.k1=v1;k2[i]=v2'",
@@ -250,6 +245,12 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
 
 def main():
     args = parse_cmdline_args()
+
+    try:
+        jpath = None if args.jmespath is None else jmespath.compile(args.jmespath)
+    except JMESPathError:
+        print_err(f'invalid JMESPath expression: {args.jmespath}')
+        sys_exit(1)
 
     # check if the clipboard is available
     cp2clip = args.cp2clip and is_clipboard_available()
@@ -273,7 +274,7 @@ def main():
             # read from file
             input_fp = open(file, 'r+') if isinstance(file, str) else file
             process(input_fp,
-                    args.jsonpath,
+                    jpath,
                     args.format,
                     compact=args.compact,
                     cp2clip=cp2clip,
@@ -284,10 +285,14 @@ def main():
                     sort_keys=args.sort_keys,
                     sets=sets,
                     pops=pops)
-        except ParseError as err:
+        except FormatError as err:
+            print_err(err)
+        except JMESPathError as err:
             print_err(err)
         except FileNotFoundError:
-            print_err(f'no such file `{file}`')
+            print_err(f'no such file: {file}')
+        except PermissionError:
+            print_err(f'permission denied: {file}')
         finally:
             input_fp = locals().get('input_fp')
             if isinstance(input_fp, TextIOBase):
