@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "jsonfmt"
 dynamic = ["version"]
-requires-python = ">=3.8"
+requires-python = ">=3.6"
 license = {text = "MIT License"}
 description = "A simple tool for formatting JSON object."
 readme = "README.md"
 keywords = ["json", "formatter", "pretty-print", "highlight", "jmespath"]
 authors = [{name = "Seamile", email = "lanhuermao@gmail.com"}]
 dependencies = [
-    "jmespath >= 1.0.1",
+    "jmespath >= 0.10.0",
     "Pygments >= 2.13.0",
     "pyperclip >= 1.8.2",
     "pyyaml >= 6.0",
