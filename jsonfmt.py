@@ -14,10 +14,13 @@ from sys import stdin, stdout, stderr, exit as sys_exit
 from typing import Any, List, IO, Optional, Sequence, Tuple, Union
 from unittest.mock import patch
 
-import jmespath
 import pyperclip
+from jmespath import compile as jcompile
 from jmespath.exceptions import JMESPathError
-from jmespath.parser import ParsedResult
+from jmespath.parser import ParsedResult as JMESPath
+from jsonpath_ng import JSONPath
+from jsonpath_ng import parse as jparse
+from jsonpath_ng.exceptions import JSONPathError
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
@@ -26,6 +29,8 @@ __version__ = '0.2.6'
 
 NUMERIC = re.compile(r'-?\d+$|-?\d+\.\d+$|^-?\d+\.?\d+e-?\d+$')
 DICT_OR_LIST = re.compile(r'^\{.*\}$|^\[.*\]$')
+
+QueryPath = Union[JMESPath, JSONPath]
 
 
 def print_inf(msg: Any):
@@ -47,7 +52,18 @@ def is_clipboard_available() -> bool:
         and paste_fn.__class__.__name__ != 'ClipboardUnavailable'
 
 
-def parse_to_pyobj(text: str, jpath: Optional[ParsedResult]) -> Tuple[Any, str]:
+def extract_elements(qpath: QueryPath, py_obj: Any) -> Any:
+    '''find and extract elements via JMESPath or JSONPath'''
+    if isinstance(qpath, JMESPath):
+        return qpath.search(py_obj)
+    elif isinstance(qpath, JSONPath):
+        items = [matched.value for matched in qpath.find(py_obj)]
+        return items[0] if len(items) == 1 else items
+    else:
+        return None
+
+
+def parse_to_pyobj(text: str, qpath: Optional[QueryPath]) -> Tuple[Any, str]:
     '''read json, toml or yaml from IO and then match sub-element by jmespath'''
     # parse json, toml or yaml to python object
     loads_methods = {
@@ -66,21 +82,26 @@ def parse_to_pyobj(text: str, jpath: Optional[ParsedResult]) -> Tuple[Any, str]:
     else:
         raise FormatError("no json, toml or yaml found in the text")
 
-    if jpath is None:
+    if qpath is None:
         return py_obj, fmt
     else:
-        # match sub-elements via jmespath
-        return jpath.search(py_obj), fmt
+        # match sub-elements via jmespath or jsonpath
+        return extract_elements(qpath, py_obj), fmt
 
 
-def forward_by_keys(py_obj: Any, keys: str) -> Tuple[Any, Union[str, int]]:
-    next_k = lambda obj, k: int(k) if isinstance(obj, list) else k
+def traverse_to_bottom(py_obj: Any, keys: str) -> Tuple[Any, Union[str, int]]:
+    '''traverse the nested py_obj to bottom by keys'''
+    def key_or_idx(obj: Any, key: str):
+        '''return str for dict and int for list'''
+        return int(key) if isinstance(obj, list) else key
 
+    # make sure the keys joined by `.`, and then split
     _keys = keys.replace(']', '').replace('[', '.').split('.')
+
     for k in _keys[:-1]:
-        py_obj = py_obj[next_k(py_obj, k)]
+        py_obj = py_obj[key_or_idx(py_obj, k)]
     else:
-        return py_obj, next_k(py_obj, _keys[-1])
+        return py_obj, key_or_idx(py_obj, _keys[-1])
 
 
 def load_value(value: str):
@@ -96,18 +117,22 @@ def load_value(value: str):
 
 
 def modify_pyobj(py_obj: Any, sets: List[str], pops: List[str]):
+    '''add, modify or pop items for PyObj'''
     for kv in sets:
         try:
             keys, value = kv.split('=')
-            bottom, last_k = forward_by_keys(py_obj, keys)
-            bottom[last_k] = load_value(value)
-        except (IndexError, KeyError, ValueError):
+            bottom, last_k = traverse_to_bottom(py_obj, keys)
+            if isinstance(bottom, list) and len(bottom) <= last_k:  # type: ignore
+                bottom.append(load_value(value))
+            else:
+                bottom[last_k] = load_value(value)  # type: ignore
+        except (IndexError, KeyError, ValueError, TypeError):
             print_err(f'invalid key path: {kv}')
             continue
 
     for keys in pops:
         try:
-            bottom, last_k = forward_by_keys(py_obj, keys)
+            bottom, last_k = traverse_to_bottom(py_obj, keys)
             bottom.pop(last_k)
         except (IndexError, KeyError):
             print_err(f'invalid key path: {keys}')
@@ -183,13 +208,13 @@ def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
             print_inf(f'result written to {output_fp.name}')
 
 
-def process(input_fp: IO, jpath: Optional[ParsedResult], convert_fmt: Optional[str],
+def process(input_fp: IO, qpath: Optional[QueryPath], to_fmt: Optional[str],
             *, compact: bool, cp2clip: bool, escape: bool, indent: Union[int, str],
             overview: bool, overwrite: bool, sort_keys: bool,
             sets: Optional[list], pops: Optional[list]):
     # parse and format
     input_text = input_fp.read()
-    py_obj, fmt = parse_to_pyobj(input_text, jpath)
+    py_obj, fmt = parse_to_pyobj(input_text, qpath)
 
     if sets or pops:
         modify_pyobj(py_obj, sets, pops)  # type: ignore
@@ -197,8 +222,8 @@ def process(input_fp: IO, jpath: Optional[ParsedResult], convert_fmt: Optional[s
     if overview:
         py_obj = get_overview(py_obj)
 
-    convert_fmt = convert_fmt or fmt
-    formated_text = format_to_text(py_obj, convert_fmt,
+    to_fmt = to_fmt or fmt
+    formated_text = format_to_text(py_obj, to_fmt,
                                    compact=compact, escape=escape,
                                    indent=indent, sort_keys=sort_keys)
 
@@ -208,7 +233,7 @@ def process(input_fp: IO, jpath: Optional[ParsedResult], convert_fmt: Optional[s
     else:
         # truncate file to zero length before overwrite
         output_fp = input_fp
-    output(output_fp, formated_text, convert_fmt, cp2clip)
+    output(output_fp, formated_text, to_fmt, cp2clip)
 
 
 def parse_cmdline_args(args: Optional[Sequence[str]] = None):
@@ -228,8 +253,11 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
                         help='show data structure overview')
     parser.add_argument('-O', dest='overwrite', action='store_true',
                         help='overwrite the formated text to original file')
-    parser.add_argument('-p', dest='jmespath', type=str,
-                        help='output part of the object via jmespath')
+    parser.add_argument('-p', dest='querypath', type=str,
+                        help='the path for querying')
+    parser.add_argument('-q', dest='querylang', default='jmespath',
+                        choices=['jmespath', 'jsonpath'],
+                        help='the language for querying')
     parser.add_argument('-s', dest='sort_keys', action='store_true',
                         help='sort keys of objects on output')
     parser.add_argument('--set', metavar="'foo.k1=v1;k2[i]=v2'",
@@ -246,11 +274,15 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
 def main():
     args = parse_cmdline_args()
 
-    try:
-        jpath = None if args.jmespath is None else jmespath.compile(args.jmespath)
-    except JMESPathError:
-        print_err(f'invalid JMESPath expression: {args.jmespath}')
-        sys_exit(1)
+    if args.querypath is None:
+        querypath = None
+    else:
+        parse_path = {'jmespath': jcompile, 'jsonpath': jparse}[args.querylang]
+        try:
+            querypath = parse_path(args.querypath)
+        except (JMESPathError, JSONPathError):
+            print_err(f'invalid querypath expression: {args.querypath}')
+            sys_exit(1)
 
     # check if the clipboard is available
     cp2clip = args.cp2clip and is_clipboard_available()
@@ -274,7 +306,7 @@ def main():
             # read from file
             input_fp = open(file, 'r+') if isinstance(file, str) else file
             process(input_fp,
-                    jpath,
+                    querypath,
                     args.format,
                     compact=args.compact,
                     cp2clip=cp2clip,

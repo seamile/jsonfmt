@@ -6,7 +6,7 @@
 [![Code Grade](https://app.codacy.com/project/badge/Grade/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Test Coverage](https://app.codacy.com/project/badge/Coverage/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 
-**jsonfmt** is a powerful tool for handling JSON document.
+**jsonfmt** is a powerful tool for pretty-printing, querying and conversion JSON documents.
 
 It is as powerful as [jq](https://github.com/jqlang/jq), but simpler.
 
@@ -21,14 +21,15 @@ It is as powerful as [jq](https://github.com/jqlang/jq), but simpler.
     - [Show the overview of a large JSON.](#show-the-overview-of-a-large-json)
     - [Copy the result to clipboard.](#copy-the-result-to-clipboard)
 - [3. Minimize the JSON document.](#3-minimize-the-json-document)
-- [4. Pick out parts of a large JSON via JmesPath.](#4-pick-out-parts-of-a-large-json-via-jmespath)
+- [4. Pick out parts of a large JSON via JMESPath or JSONPath.](#4-pick-out-parts-of-a-large-json-via-jmespath-or-jsonpath)
 - [5. Convert formats between JSON, TOML and YAML.](#5-convert-formats-between-json-toml-and-yaml)
     - [JSON to TOML and YAML](#json-to-toml-and-yaml)
     - [TOML to JSON and YAML](#toml-to-json-and-yaml)
     - [YAML to JSON and TOML](#yaml-to-json-and-toml)
 - [6. Modify some values in the input data.](#6-modify-some-values-in-the-input-data)
-    - [Add and modify some items.](#add-and-modify-some-items)
-    - [Pop some items.](#pop-some-items)
+    - [Add items](#add-items)
+    - [Modify items](#modify-items)
+    - [Pop items](#pop-items)
 - [7. Output to file.](#7-output-to-file)
 
 
@@ -214,14 +215,14 @@ $ echo '{
 {"age":21,"items":["pen","phone"],"name":"alex"}
 ```
 
-### 4. Pick out parts of a large JSON via JmesPath.
+### 4. Pick out parts of a large JSON via JMESPath or JSONPath.
 
-Unlike from jq's private solution, `jsonfmt` uses [JmesPath](https://jmespath.org/) as its query language.
+Unlike from jq's private solution, `jsonfmt` uses [JMESPath](https://jmespath.org/) as its query language.
 
-Among the many JSON query languages, `JmesPath` is the most popular one ([compared here](https://npmtrends.com/JSONPath-vs-jmespath-vs-jq-vs-json-path-vs-json-query-vs-jsonata-vs-jsonpath-vs-jsonpath-plus-vs-node-jq)).
-It is more general than `jq`, and more intuitive and powerful than `JsonPath`.
+Among the many JSON query languages, `JMESPath` is the most popular one ([compared here](https://npmtrends.com/JSONPath-vs-jmespath-vs-jq-vs-json-path-vs-json-query-vs-jsonata-vs-jsonpath-vs-jsonpath-plus-vs-node-jq)).
+It is more general than `jq`, and more intuitive and powerful than `JSONPath`.
 
-Like the XPath for xml, `JmesPath` can elegantly extract parts of a given JSON document with simple syntax.
+Like the XPath for xml, `JMESPath` can elegantly extract parts of a given JSON document with simple syntax.
 See the tutorial [here](https://jmespath.org/tutorial.html).
 
 Some examples:
@@ -305,7 +306,7 @@ Some examples:
 - [More examples](https://jmespath.org/examples.html).
 
 
-**Amazingly**, you can do the same with YAML and TOML using JmesPath, and convert the result format arbitrarily.
+**Amazingly**, you can do the same with YAML and TOML using JMESPath, and convert the result format arbitrarily.
 
 ```shell
 # read the data from toml file, and convert the result to yaml
@@ -399,15 +400,15 @@ $ jsonfmt test/example.yaml -f toml
 
 Use the `--set` and `--pop` options when you want to change something in the input documents.
 
-The format is `--set 'key1=value1'`. When you need to modify multiple values ​​you can use `;` to separate: `--set 'k1=v1;k2=v2'`. If the key-value pair dose not exist, it will be added.
+The format is `--set 'key=value'`. When you need to modify multiple values ​​you can use `;` to separate: `--set 'k1=v1;k2=v2'`. If the key-value pair dose not exist, it will be added.
 
-For the items in list, use `key[i]` or `key.i` to specify. But it doesn't support adding new elements.
+For the items in list, use `key[i]` or `key.i` to specify. If the index is greater than or equal to the number of elements, the value will be appended.
 
-#### Add and modify some items.
+#### Add items
 
 ```shell
-# add a key-value pair and modify the money field
-$ jsonfmt --set 'skills=["Django","Flask"];money=1000' test/example.json
+# add `country` key and append one item for `actions`
+$ jsonfmt --set 'country=China; actions[2]={"name": "drink"}' test/example.json
 ```
 
 *Output:*
@@ -424,24 +425,54 @@ $ jsonfmt --set 'skills=["Django","Flask"];money=1000' test/example.json
             "calorie": -375,
             "date": "2023-04-27",
             "name": "sport"
+        },
+        {
+            "name": "drink"
+        }
+    ],
+    "age": 23,
+    "country": "China",
+    "gender": "纯爷们",
+    "money": 3.1415926,
+    "name": "Bob"
+}
+```
+
+#### Modify items
+
+```shell
+# modify money and actions[1]["name"]
+$ jsonfmt --set 'money=1000; actions[1].name=swim' test/example.json
+```
+
+*Output:*
+
+```json
+{
+    "actions": [
+        {
+            "calorie": 294.9,
+            "date": "2021-03-02",
+            "name": "eat"
+        },
+        {
+            "calorie": -375,
+            "date": "2023-04-27",
+            "name": "swim"
         }
     ],
     "age": 23,
     "gender": "纯爷们",
     "money": 1000,
-    "name": "Bob",
-    "skills": [
-        "Django",
-        "Flask"
-    ]
+    "name": "Bob"
 }
 ```
 
-#### Pop some items.
+#### Pop items
 
 ```shell
-# remove the gender field and actions[1]
-$ jsonfmt --pop 'gender;actions[1]' test/example.json
+# pop `gender` and actions[1]
+$ jsonfmt --pop 'gender; actions[1]' test/example.json
 ```
 
 *Output:*
@@ -468,7 +499,7 @@ jsonfmt --set 'skills=["Django","Flask"];money=1000' --pop 'gender;actions[1]' t
 ```
 
 **Note**, however, that the above command will not modify the original JSON file.
-If you want to do this, then please read below.
+If you want to do this, read below please.
 
 ### 7. Output to file.
 
