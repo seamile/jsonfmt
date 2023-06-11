@@ -63,8 +63,8 @@ $ jsonfmt [options] [files ...]
     - `-i {0-8,t}`: number of spaces for indentation (default: 2)
     - `-o`: show data structure overview
     - `-O`: overwrite the formated text to original file
+    - `-l {jmespath,jsonpath}`: the language for querying (default: jmespath)
     - `-p QUERYPATH`: the path for querying
-    - `-q {jmespath,jsonpath}`: the language for querying (default: jmespath)
     - `-s`: sort keys of objects on output
     - `--set 'foo.k1=v1;k2[i]=v2'`: set the keys to values (seperated by `;`)
     - `--pop 'k1;foo.k2;k3[i]'`: pop the specified keys (seperated by `;`)
@@ -273,7 +273,7 @@ Like the XPath for xml, `JMESPath` can elegantly extract parts of a given JSON d
 - Show all the keys and actions' length.
 
     ```shell
-    $ jsonfmt  -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.json
+    $ jsonfmt -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.json
     ```
 
     *Output:*
@@ -321,8 +321,8 @@ The syntax of `JSONPath` is very similar to that of `JMESPath`. Everything that 
 - Filter all `name` fields by relative path:
 
     ```shell
-    # use `-q` to specify which query language you choice
-    $ jsonfmt.py -q jsonpath -p '$..name' test/example.json
+    # use `-l` to specify the query language of JSON
+    $ jsonfmt.py -l jsonpath -p '$..name' test/example.json
     ```
 
     *Output:*
@@ -337,24 +337,49 @@ The syntax of `JSONPath` is very similar to that of `JMESPath`. Everything that 
 
 #### Query for TOML and YAML
 
-**Amazingly**, you can do the same with YAML and TOML using JMESPath, and convert the result format arbitrarily.
+**Amazingly**, you can do all of the above with TOML and YAML in the same way, and convert the result format arbitrarily. It is even possible to process all three formats simultaneously in a single command.
 
-```shell
-# read the data from toml file, and convert the result to yaml
-$ jsonfmt -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.toml -f yaml
-```
+- Read the data from toml file, and convert the result to yaml
 
-*Output:*
+    ```shell
+    $ jsonfmt -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.toml -f yaml
+    ```
 
-```yaml
-all_keys:
-- age
-- gender
-- money
-- name
-- actions
-actions_len: 2
-```
+    *Output:*
+
+    ```yaml
+    all_keys:
+    - age
+    - gender
+    - money
+    - name
+    - actions
+    actions_len: 2
+    ```
+
+- Handle three formats simultaneously
+
+    ```shell
+    $ jsonfmt.py -p 'actions[0]' test/example.json test/example.toml test/example.yaml
+    ```
+
+    *Output:*
+
+    ```
+    {
+        "calorie": 294.9,
+        "date": "2021-03-02",
+        "name": "eat"
+    }
+
+    calorie = 294.9
+    date = "2021-03-02"
+    name = "eat"
+
+    calorie: 294.9
+    date: '2021-03-02'
+    name: eat
+    ```
 
 
 ### 5. Convert formats between JSON, TOML and YAML.

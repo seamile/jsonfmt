@@ -257,11 +257,11 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
                         help='show data structure overview')
     parser.add_argument('-O', dest='overwrite', action='store_true',
                         help='overwrite the formated text to original file')
-    parser.add_argument('-p', dest='querypath', type=str,
-                        help='the path for querying')
-    parser.add_argument('-q', dest='querylang', default='jmespath',
+    parser.add_argument('-l', dest='querylang', default='jmespath',
                         choices=['jmespath', 'jsonpath'],
                         help='the language for querying (default: %(default)s)')
+    parser.add_argument('-p', dest='querypath', type=str,
+                        help='the path for querying')
     parser.add_argument('-s', dest='sort_keys', action='store_true',
                         help='sort keys of objects on output')
     parser.add_argument('--set', metavar="'foo.k1=v1;k2[i]=v2'",
@@ -321,6 +321,8 @@ def main():
                     sort_keys=args.sort_keys,
                     sets=sets,
                     pops=pops)
+            # output a blank line to separate multiple results
+            print()
         except (FormatError, JMESPathError, JSONPathError) as err:
             print_err(err)
         except FileNotFoundError:

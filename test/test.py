@@ -291,8 +291,8 @@ class JSONFormatToolTestCase(unittest.TestCase):
             indent='2',
             overview=False,
             overwrite=False,
-            querypath=None,
             querylang='jmespath',
+            querypath=None,
             sort_keys=False,
             set=None,
             pop=None,
@@ -310,8 +310,8 @@ class JSONFormatToolTestCase(unittest.TestCase):
             '-i', '4',
             '-o',
             '-O',
+            '-l', 'jsonpath',
             '-p', 'path.to.json',
-            '-q', 'jsonpath',
             '--set', 'a; b',
             '--pop', 'c; d',
             '-s',
@@ -326,8 +326,8 @@ class JSONFormatToolTestCase(unittest.TestCase):
             indent='4',
             overview=True,
             overwrite=True,
-            querypath='path.to.json',
             querylang='jsonpath',
+            querypath='path.to.json',
             sort_keys=True,
             set='a; b',
             pop='c; d',
@@ -374,7 +374,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
         self.assertIn('invalid querypath expression', jsonfmt.stderr.read())
 
         # test empty jmespath
-        with patch('sys.argv', ['jsonfmt', JSON_FILE, '-q', 'jsonpath', '-p', ' ']),\
+        with patch('sys.argv', ['jsonfmt', JSON_FILE, '-l', 'jsonpath', '-p', ' ']),\
                 self.assertRaises(SystemExit):
             jsonfmt.main()
         self.assertIn('invalid querypath expression', jsonfmt.stderr.read())
