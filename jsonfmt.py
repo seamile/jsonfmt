@@ -56,11 +56,15 @@ def extract_elements(qpath: QueryPath, py_obj: Any) -> Any:
     '''find and extract elements via JMESPath or JSONPath'''
     if isinstance(qpath, JMESPath):
         return qpath.search(py_obj)
-    elif isinstance(qpath, JSONPath):
-        items = [matched.value for matched in qpath.find(py_obj)]
-        return items[0] if len(items) == 1 else items
     else:
-        return None
+        items = [matched.value for matched in qpath.find(py_obj)]
+        n_items = len(items)
+        if n_items == 0:
+            return None
+        elif n_items == 1:
+            return items[0]
+        else:
+            return items
 
 
 def parse_to_pyobj(text: str, qpath: Optional[QueryPath]) -> Tuple[Any, str]:
@@ -245,7 +249,7 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
     parser.add_argument('-e', dest='escape', action='store_true',
                         help='escape non-ASCII characters')
     parser.add_argument('-f', dest='format', choices=['json', 'toml', 'yaml'],
-                        help='the format to output ''(default: %(default)s)')
+                        help='the format to output (default: same as input)')
     parser.add_argument('-i', dest='indent', metavar='{0-8,t}',
                         choices='012345678t', default='2',
                         help='number of spaces for indentation (default: %(default)s)')
@@ -257,7 +261,7 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
                         help='the path for querying')
     parser.add_argument('-q', dest='querylang', default='jmespath',
                         choices=['jmespath', 'jsonpath'],
-                        help='the language for querying')
+                        help='the language for querying (default: %(default)s)')
     parser.add_argument('-s', dest='sort_keys', action='store_true',
                         help='sort keys of objects on output')
     parser.add_argument('--set', metavar="'foo.k1=v1;k2[i]=v2'",
@@ -280,8 +284,8 @@ def main():
         parse_path = {'jmespath': jcompile, 'jsonpath': jparse}[args.querylang]
         try:
             querypath = parse_path(args.querypath)
-        except (JMESPathError, JSONPathError):
-            print_err(f'invalid querypath expression: {args.querypath}')
+        except (JMESPathError, JSONPathError, AttributeError):
+            print_err(f'invalid querypath expression: "{args.querypath}"')
             sys_exit(1)
 
     # check if the clipboard is available
@@ -317,9 +321,7 @@ def main():
                     sort_keys=args.sort_keys,
                     sets=sets,
                     pops=pops)
-        except FormatError as err:
-            print_err(err)
-        except JMESPathError as err:
+        except (FormatError, JMESPathError, JSONPathError) as err:
             print_err(err)
         except FileNotFoundError:
             print_err(f'no such file: {file}')

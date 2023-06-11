@@ -8,7 +8,7 @@
 
 **jsonfmt** is a powerful tool for pretty-printing, querying and conversion JSON documents.
 
-It is as powerful as [jq](https://github.com/jqlang/jq), but simpler.
+It is as powerful as [jq](https://github.com/jqlang/jq), but easier to use.
 
 
 ## Features
@@ -22,6 +22,9 @@ It is as powerful as [jq](https://github.com/jqlang/jq), but simpler.
     - [Copy the result to clipboard.](#copy-the-result-to-clipboard)
 - [3. Minimize the JSON document.](#3-minimize-the-json-document)
 - [4. Pick out parts of a large JSON via JMESPath or JSONPath.](#4-pick-out-parts-of-a-large-json-via-jmespath-or-jsonpath)
+    - [JMESPath examples](#jmespath-examples)
+    - [JSONPath examples](#jsonpath-examples)
+    - [Query for TOML and YAML](#query-for-toml-and-yaml)
 - [5. Convert formats between JSON, TOML and YAML.](#5-convert-formats-between-json-toml-and-yaml)
     - [JSON to TOML and YAML](#json-to-toml-and-yaml)
     - [TOML to JSON and YAML](#toml-to-json-and-yaml)
@@ -56,11 +59,12 @@ $ jsonfmt [options] [files ...]
     - `-c`: suppress all whitespace separation
     - `-C`: copy the result to clipboard
     - `-e`: escape non-ASCII characters
-    - `-f {json,toml,yaml}`: the format to output (default: None)
+    - `-f {json,toml,yaml}`: the format to output (default: same as input)
     - `-i {0-8,t}`: number of spaces for indentation (default: 2)
     - `-o`: show data structure overview
     - `-O`: overwrite the formated text to original file
-    - `-p JSONPATH`: output part of the object via jmespath
+    - `-p QUERYPATH`: the path for querying
+    - `-q {jmespath,jsonpath}`: the language for querying (default: jmespath)
     - `-s`: sort keys of objects on output
     - `--set 'foo.k1=v1;k2[i]=v2'`: set the keys to values (seperated by `;`)
     - `--pop 'k1;foo.k2;k3[i]'`: pop the specified keys (seperated by `;`)
@@ -137,11 +141,18 @@ The pager-mode is similar to the command `more`.
 
 The key-binding of the pager-mode is same as command `more`:
 
-- <kbd>j</kbd> / <kbd>k</kbd> to forward / backward by line.
-- <kbd>f</kbd> or <kbd>ctrl</kbd>+<kbd>f</kbd> to forward by page.
-- <kbd>b</kbd> or <kbd>ctrl</kbd>+<kbd>b</kbd> to backward by page.
-- <kbd>g</kbd> to go to the top of the page, and <kbd>G</kbd> to the bottom.
-- <kbd>q</kbd> to exit.
+| key                          | description               |
+|------------------------------|---------------------------|
+| <kbd>j</kbd>                 | forward  by line          |
+| <kbd>k</kbd>                 | backward by line          |
+| <kbd>f</kbd>                 | forward by page           |
+| <kbd>ctrl</kbd>+<kbd>f</kbd> | forward by page           |
+| <kbd>b</kbd>                 | backward by page          |
+| <kbd>ctrl</kbd>+<kbd>b</kbd> | backward by page          |
+| <kbd>g</kbd>                 | go to the top of the page |
+| <kbd>G</kbd>                 | go to the bottom          |
+| <kbd>/</kbd>                 | search mode               |
+| <kbd>q</kbd>                 | quit pager-mode           |
 
 There is a big JSON from GitHub, you can paste this command into terminal to try the pager-mode:
 
@@ -217,15 +228,13 @@ $ echo '{
 
 ### 4. Pick out parts of a large JSON via JMESPath or JSONPath.
 
-Unlike from jq's private solution, `jsonfmt` uses [JMESPath](https://jmespath.org/) as its query language.
+Unlike from jq's private solution, `jsonfmt` uses both [JMESPath](https://jmespath.org/) and [JSONPath](https://datatracker.ietf.org/doc/id/draft-goessner-dispatch-jsonpath-00.html) as its query language.
 
-Among the many JSON query languages, `JMESPath` is the most popular one ([compared here](https://npmtrends.com/JSONPath-vs-jmespath-vs-jq-vs-json-path-vs-json-query-vs-jsonata-vs-jsonpath-vs-jsonpath-plus-vs-node-jq)).
-It is more general than `jq`, and more intuitive and powerful than `JSONPath`.
+Among the many JSON query languages, `JMESPath` is the most popular one ([compared here](https://npmtrends.com/JSONPath-vs-jmespath-vs-jq-vs-json-path-vs-json-query-vs-jsonata-vs-jsonpath-vs-jsonpath-plus-vs-node-jq)). It is more general than `jq`, and more intuitive and powerful than `JSONPath`. So I prefer to use it.
 
-Like the XPath for xml, `JMESPath` can elegantly extract parts of a given JSON document with simple syntax.
-See the tutorial [here](https://jmespath.org/tutorial.html).
+Like the XPath for xml, `JMESPath` can elegantly extract parts of a given JSON document with simple syntax. The official tutorial of JMESPath is [here](https://jmespath.org/tutorial.html).
 
-Some examples:
+#### JMESPath examples
 
 - pick out the first actions in `example.json`
 
@@ -303,8 +312,30 @@ Some examples:
     ]
     ```
 
-- [More examples](https://jmespath.org/examples.html).
+[More examples of JMESPath](https://jmespath.org/examples.html).
 
+#### JSONPath examples
+
+The syntax of `JSONPath` is very similar to that of `JMESPath`. Everything that `JSONPath` can do `JMESPath` can also do, except using relative path querying. So `JSONPath` can be used as a supplementary query method of `JMESPath`.
+
+- Filter all `name` fields by relative path:
+
+    ```shell
+    # use `-q` to specify which query language you choice
+    $ jsonfmt.py -q jsonpath -p '$..name' test/example.json
+    ```
+
+    *Output:*
+
+    ```json
+    [
+        "Bob",
+        "eat",
+        "sport"
+    ]
+    ```
+
+#### Query for TOML and YAML
 
 **Amazingly**, you can do the same with YAML and TOML using JMESPath, and convert the result format arbitrarily.
 
