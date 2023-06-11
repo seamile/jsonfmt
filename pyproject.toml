@@ -4,20 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jsonfmt"
-dynamic = ["version"]
-requires-python = ">=3.8"
+dynamic = ["dependencies", "version"]
+requires-python = ">=3.6"
 license = {text = "MIT License"}
 description = "A simple tool for formatting JSON object."
 readme = "README.md"
 keywords = ["json", "formatter", "pretty-print", "highlight", "jmespath"]
 authors = [{name = "Seamile", email = "lanhuermao@gmail.com"}]
-dependencies = [
-    "jmespath >= 1.0.1",
-    "Pygments >= 2.13.0",
-    "pyperclip >= 1.8.2",
-    "pyyaml >= 6.0",
-    "toml >= 0.10.2"
-]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -41,6 +34,7 @@ repository = "https://github.com/seamile/jsonfmt"
 documentation = "https://seamile.github.io/jsonfmt/"
 
 [tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
 version = {attr = "jsonfmt.__version__" }
 
 [project.scripts]

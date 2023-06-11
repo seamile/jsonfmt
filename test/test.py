@@ -8,7 +8,8 @@ from argparse import Namespace
 from copy import deepcopy
 from functools import partial
 from io import StringIO
-from jmespath import compile as jp_compile
+from jmespath import compile as jcompile
+from jsonpath_ng import parse as jparse
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, YamlLexer, TOMLLexer
@@ -94,29 +95,39 @@ class JSONFormatToolTestCase(unittest.TestCase):
         available = jsonfmt.is_clipboard_available()
         self.assertIsInstance(available, bool)
 
-    def test_parse_to_pyobj(self):
+    def test_parse_to_pyobj_with_jmespath(self):
         # normal parameters test
-        matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, jp_compile("actions[:].calorie"))
+        matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, jcompile("actions[:].calorie"))
         self.assertEqual(matched_obj, ([294.9, -375], 'json'))
-        matched_obj = jsonfmt.parse_to_pyobj(TOML_TEXT, jp_compile("actions[*].name"))
+        matched_obj = jsonfmt.parse_to_pyobj(TOML_TEXT, jcompile("actions[*].name"))
         self.assertEqual(matched_obj, (['eat', 'sport'], 'toml'))
-        matched_obj = jsonfmt.parse_to_pyobj(YAML_TEXT, jp_compile("actions[*].date"))
+        matched_obj = jsonfmt.parse_to_pyobj(YAML_TEXT, jcompile("actions[*].date"))
         self.assertEqual(matched_obj, (['2021-03-02', '2023-04-27'], 'yaml'))
         # test not exists key
-        matched_obj = jsonfmt.parse_to_pyobj(TOML_TEXT, jp_compile("not_exist_key"))
+        matched_obj = jsonfmt.parse_to_pyobj(TOML_TEXT, jcompile("not_exist_key"))
         self.assertEqual(matched_obj, (None, 'toml'))
         # test index out of range
-        matched_obj = jsonfmt.parse_to_pyobj(YAML_TEXT, jp_compile('actions[7]'))
+        matched_obj = jsonfmt.parse_to_pyobj(YAML_TEXT, jcompile('actions[7]'))
         self.assertEqual(matched_obj, (None, 'yaml'))
 
-        # test empty jmespath
-        with patch('jsonfmt.stderr', FakeStdErr()), self.assertRaises(jsonfmt.JMESPathError):
-            matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, jp_compile(""))
+    def test_parse_to_pyobj_with_jsonpath(self):
+        # normal parameters test
+        matched_obj = jsonfmt.parse_to_pyobj(JSON_TEXT, jparse("age"))
+        self.assertEqual(matched_obj, (23, 'json'))
+        matched_obj = jsonfmt.parse_to_pyobj(TOML_TEXT, jparse("$..name"))
+        self.assertEqual(matched_obj, (['Bob', 'eat', 'sport'], 'toml'))
+        matched_obj = jsonfmt.parse_to_pyobj(YAML_TEXT, jparse("actions[*].date"))
+        self.assertEqual(matched_obj, (['2021-03-02', '2023-04-27'], 'yaml'))
+        # test not exists key
+        matched_obj = jsonfmt.parse_to_pyobj(TOML_TEXT, jparse("not_exist_key"))
+        self.assertEqual(matched_obj, (None, 'toml'))
+        # test index out of range
+        matched_obj = jsonfmt.parse_to_pyobj(YAML_TEXT, jparse('actions[7]'))
+        self.assertEqual(matched_obj, (None, 'yaml'))
 
-        # test for unsupported format
+    def test_parse_to_pyobj_with_wrong_fmt(self):
         with self.assertRaises(jsonfmt.FormatError), open(__file__) as fp:
-            text = fp.read()
-            matched_obj = jsonfmt.parse_to_pyobj(text, jp_compile("actions[0].calorie"))
+            jsonfmt.parse_to_pyobj(fp.read(), jcompile("actions[0].calorie"))
 
     def test_modify_pyobj_for_adding(self):
         # test empty sets and pops
@@ -126,13 +137,16 @@ class JSONFormatToolTestCase(unittest.TestCase):
 
         # test add new value
         obj = deepcopy(self.py_obj)
-        # add single value
-        jsonfmt.modify_pyobj(obj, ['new1=value1'], [])
-        self.assertEqual(obj['new1'], 'value1')
+        # add single value to dict
+        jsonfmt.modify_pyobj(obj, ['new=value'], [])
+        self.assertEqual(obj['new'], 'value')
+        # add single value to list
+        jsonfmt.modify_pyobj(obj, ['actions[20]={"K":"V"}'], [])
+        self.assertEqual(obj['actions'][2], {"K": "V"})
         # add multiple values at once
-        jsonfmt.modify_pyobj(obj, ['new2={}', 'new3=[1,2,3]'], [])
-        self.assertEqual(obj['new2'], {})
-        self.assertEqual(obj['new3'], [1, 2, 3])
+        jsonfmt.modify_pyobj(obj, ['new=[1,2,3]', 'actions[50]={"K":"V"}'], [])
+        self.assertEqual(obj['new'], [1, 2, 3])
+        self.assertEqual(obj['actions'][2], {"K": "V"})
 
     def test_modify_pyobj_for_modifying(self):
         # test modify values
@@ -179,9 +193,10 @@ class JSONFormatToolTestCase(unittest.TestCase):
             self.assertIn('invalid key path', jsonfmt.stderr.read())
 
     def test_get_overview(self):
+        # test dict obj
         obj = deepcopy(self.py_obj)
         obj['dict'] = {"a": 7758, "b": [1, 2, 3]}
-        expected = {
+        expected_1 = {
             'actions': [],
             'age': 23,
             'gender': '...',
@@ -193,7 +208,19 @@ class JSONFormatToolTestCase(unittest.TestCase):
             }
         }
         overview = jsonfmt.get_overview(obj)
-        self.assertEqual(overview, expected)
+        self.assertEqual(overview, expected_1)
+
+        # test list obj
+        obj = deepcopy(self.py_obj['actions'])
+        expected_2 = [
+            {
+                "calorie": 294.9,
+                "date": "...",
+                "name": "..."
+            }
+        ]
+        overview = jsonfmt.get_overview(obj)
+        self.assertEqual(overview, expected_2)
 
     def test_format_to_text(self):
         py_obj = {"name": "约翰", "age": 30}
@@ -264,7 +291,8 @@ class JSONFormatToolTestCase(unittest.TestCase):
             indent='2',
             overview=False,
             overwrite=False,
-            jmespath=None,
+            querypath=None,
+            querylang='jmespath',
             sort_keys=False,
             set=None,
             pop=None,
@@ -283,6 +311,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             '-o',
             '-O',
             '-p', 'path.to.json',
+            '-q', 'jsonpath',
             '--set', 'a; b',
             '--pop', 'c; d',
             '-s',
@@ -297,7 +326,8 @@ class JSONFormatToolTestCase(unittest.TestCase):
             indent='4',
             overview=True,
             overwrite=True,
-            jmespath='path.to.json',
+            querypath='path.to.json',
+            querylang='jsonpath',
             sort_keys=True,
             set='a; b',
             pop='c; d',
@@ -306,6 +336,10 @@ class JSONFormatToolTestCase(unittest.TestCase):
 
         actual_args = jsonfmt.parse_cmdline_args(args=args)
         self.assertEqual(actual_args, expected_args)
+
+    ############################################################################
+    #                                 main test                                #
+    ############################################################################
 
     @patch.multiple(sys, argv=['jsonfmt', '-i', 't', '-p', 'actions[*].name',
                                JSON_FILE])
@@ -331,11 +365,19 @@ class JSONFormatToolTestCase(unittest.TestCase):
             self.assertIn('no such file: not_exist_file.json', errmsg)
             self.assertIn('no json, toml or yaml found', errmsg)
 
-        # test wrong jmespath
+    @patch.multiple(jsonfmt, stderr=FakeStdErr())
+    def test_main_querying(self):
+        # test empty jmespath
         with patch('sys.argv', ['jsonfmt', JSON_FILE, '-p', '$.-[=]']),\
                 self.assertRaises(SystemExit):
             jsonfmt.main()
-        self.assertIn('invalid JMESPath expression', jsonfmt.stderr.read())
+        self.assertIn('invalid querypath expression', jsonfmt.stderr.read())
+
+        # test empty jmespath
+        with patch('sys.argv', ['jsonfmt', JSON_FILE, '-q', 'jsonpath', '-p', ' ']),\
+                self.assertRaises(SystemExit):
+            jsonfmt.main()
+        self.assertIn('invalid querypath expression', jsonfmt.stderr.read())
 
     @patch('jsonfmt.stdout', FakeStdOut())
     def test_main_convert(self):

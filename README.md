@@ -6,9 +6,9 @@
 [![Code Grade](https://app.codacy.com/project/badge/Grade/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Test Coverage](https://app.codacy.com/project/badge/Coverage/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 
-**jsonfmt** is a powerful tool for handling JSON document.
+**jsonfmt** is a powerful tool for pretty-printing, querying and conversion JSON documents.
 
-It is as powerful as [jq](https://github.com/jqlang/jq), but simpler.
+It is as powerful as [jq](https://github.com/jqlang/jq), but easier to use.
 
 
 ## Features
@@ -21,14 +21,18 @@ It is as powerful as [jq](https://github.com/jqlang/jq), but simpler.
     - [Show the overview of a large JSON.](#show-the-overview-of-a-large-json)
     - [Copy the result to clipboard.](#copy-the-result-to-clipboard)
 - [3. Minimize the JSON document.](#3-minimize-the-json-document)
-- [4. Pick out parts of a large JSON via JmesPath.](#4-pick-out-parts-of-a-large-json-via-jmespath)
+- [4. Pick out parts of a large JSON via JMESPath or JSONPath.](#4-pick-out-parts-of-a-large-json-via-jmespath-or-jsonpath)
+    - [JMESPath examples](#jmespath-examples)
+    - [JSONPath examples](#jsonpath-examples)
+    - [Query for TOML and YAML](#query-for-toml-and-yaml)
 - [5. Convert formats between JSON, TOML and YAML.](#5-convert-formats-between-json-toml-and-yaml)
     - [JSON to TOML and YAML](#json-to-toml-and-yaml)
     - [TOML to JSON and YAML](#toml-to-json-and-yaml)
     - [YAML to JSON and TOML](#yaml-to-json-and-toml)
 - [6. Modify some values in the input data.](#6-modify-some-values-in-the-input-data)
-    - [Add and modify some items.](#add-and-modify-some-items)
-    - [Pop some items.](#pop-some-items)
+    - [Add items](#add-items)
+    - [Modify items](#modify-items)
+    - [Pop items](#pop-items)
 - [7. Output to file.](#7-output-to-file)
 
 
@@ -55,11 +59,12 @@ $ jsonfmt [options] [files ...]
     - `-c`: suppress all whitespace separation
     - `-C`: copy the result to clipboard
     - `-e`: escape non-ASCII characters
-    - `-f {json,toml,yaml}`: the format to output (default: None)
+    - `-f {json,toml,yaml}`: the format to output (default: same as input)
     - `-i {0-8,t}`: number of spaces for indentation (default: 2)
     - `-o`: show data structure overview
     - `-O`: overwrite the formated text to original file
-    - `-p JSONPATH`: output part of the object via jmespath
+    - `-p QUERYPATH`: the path for querying
+    - `-q {jmespath,jsonpath}`: the language for querying (default: jmespath)
     - `-s`: sort keys of objects on output
     - `--set 'foo.k1=v1;k2[i]=v2'`: set the keys to values (seperated by `;`)
     - `--pop 'k1;foo.k2;k3[i]'`: pop the specified keys (seperated by `;`)
@@ -136,11 +141,18 @@ The pager-mode is similar to the command `more`.
 
 The key-binding of the pager-mode is same as command `more`:
 
-- <kbd>j</kbd> / <kbd>k</kbd> to forward / backward by line.
-- <kbd>f</kbd> or <kbd>ctrl</kbd>+<kbd>f</kbd> to forward by page.
-- <kbd>b</kbd> or <kbd>ctrl</kbd>+<kbd>b</kbd> to backward by page.
-- <kbd>g</kbd> to go to the top of the page, and <kbd>G</kbd> to the bottom.
-- <kbd>q</kbd> to exit.
+| key                          | description               |
+|------------------------------|---------------------------|
+| <kbd>j</kbd>                 | forward  by line          |
+| <kbd>k</kbd>                 | backward by line          |
+| <kbd>f</kbd>                 | forward by page           |
+| <kbd>ctrl</kbd>+<kbd>f</kbd> | forward by page           |
+| <kbd>b</kbd>                 | backward by page          |
+| <kbd>ctrl</kbd>+<kbd>b</kbd> | backward by page          |
+| <kbd>g</kbd>                 | go to the top of the page |
+| <kbd>G</kbd>                 | go to the bottom          |
+| <kbd>/</kbd>                 | search mode               |
+| <kbd>q</kbd>                 | quit pager-mode           |
 
 There is a big JSON from GitHub, you can paste this command into terminal to try the pager-mode:
 
@@ -214,17 +226,15 @@ $ echo '{
 {"age":21,"items":["pen","phone"],"name":"alex"}
 ```
 
-### 4. Pick out parts of a large JSON via JmesPath.
+### 4. Pick out parts of a large JSON via JMESPath or JSONPath.
 
-Unlike from jq's private solution, `jsonfmt` uses [JmesPath](https://jmespath.org/) as its query language.
+Unlike from jq's private solution, `jsonfmt` uses both [JMESPath](https://jmespath.org/) and [JSONPath](https://datatracker.ietf.org/doc/id/draft-goessner-dispatch-jsonpath-00.html) as its query language.
 
-Among the many JSON query languages, `JmesPath` is the most popular one ([compared here](https://npmtrends.com/JSONPath-vs-jmespath-vs-jq-vs-json-path-vs-json-query-vs-jsonata-vs-jsonpath-vs-jsonpath-plus-vs-node-jq)).
-It is more general than `jq`, and more intuitive and powerful than `JsonPath`.
+Among the many JSON query languages, `JMESPath` is the most popular one ([compared here](https://npmtrends.com/JSONPath-vs-jmespath-vs-jq-vs-json-path-vs-json-query-vs-jsonata-vs-jsonpath-vs-jsonpath-plus-vs-node-jq)). It is more general than `jq`, and more intuitive and powerful than `JSONPath`. So I prefer to use it.
 
-Like the XPath for xml, `JmesPath` can elegantly extract parts of a given JSON document with simple syntax.
-See the tutorial [here](https://jmespath.org/tutorial.html).
+Like the XPath for xml, `JMESPath` can elegantly extract parts of a given JSON document with simple syntax. The official tutorial of JMESPath is [here](https://jmespath.org/tutorial.html).
 
-Some examples:
+#### JMESPath examples
 
 - pick out the first actions in `example.json`
 
@@ -302,14 +312,36 @@ Some examples:
     ]
     ```
 
-- [More examples](https://jmespath.org/examples.html).
+[More examples of JMESPath](https://jmespath.org/examples.html).
 
+#### JSONPath examples
 
-**Amazingly**, you can do the same with YAML and TOML using JmesPath, and convert the result format arbitrarily.
+The syntax of `JSONPath` is very similar to that of `JMESPath`. Everything that `JSONPath` can do `JMESPath` can also do, except using relative path querying. So `JSONPath` can be used as a supplementary query method of `JMESPath`.
+
+- Filter all `name` fields by relative path:
+
+    ```shell
+    # use `-q` to specify which query language you choice
+    $ jsonfmt.py -q jsonpath -p '$..name' test/example.json
+    ```
+
+    *Output:*
+
+    ```json
+    [
+        "Bob",
+        "eat",
+        "sport"
+    ]
+    ```
+
+#### Query for TOML and YAML
+
+**Amazingly**, you can do the same with YAML and TOML using JMESPath, and convert the result format arbitrarily.
 
 ```shell
 # read the data from toml file, and convert the result to yaml
-$ jsonfmt  -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.yaml -f toml
+$ jsonfmt -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.toml -f yaml
 ```
 
 *Output:*
@@ -399,15 +431,15 @@ $ jsonfmt test/example.yaml -f toml
 
 Use the `--set` and `--pop` options when you want to change something in the input documents.
 
-The format is `--set 'key1=value1'`. When you need to modify multiple values ​​you can use `;` to separate: `--set 'k1=v1;k2=v2'`. If the key-value pair dose not exist, it will be added.
+The format is `--set 'key=value'`. When you need to modify multiple values ​​you can use `;` to separate: `--set 'k1=v1;k2=v2'`. If the key-value pair dose not exist, it will be added.
 
-For the items in list, use `key[i]` or `key.i` to specify. But it doesn't support adding new elements.
+For the items in list, use `key[i]` or `key.i` to specify. If the index is greater than or equal to the number of elements, the value will be appended.
 
-#### Add and modify some items.
+#### Add items
 
 ```shell
-# add a key-value pair and modify the money field
-$ jsonfmt --set 'skills=["Django","Flask"];money=1000' test/example.json
+# add `country` key and append one item for `actions`
+$ jsonfmt --set 'country=China; actions[2]={"name": "drink"}' test/example.json
 ```
 
 *Output:*
@@ -424,24 +456,54 @@ $ jsonfmt --set 'skills=["Django","Flask"];money=1000' test/example.json
             "calorie": -375,
             "date": "2023-04-27",
             "name": "sport"
+        },
+        {
+            "name": "drink"
+        }
+    ],
+    "age": 23,
+    "country": "China",
+    "gender": "纯爷们",
+    "money": 3.1415926,
+    "name": "Bob"
+}
+```
+
+#### Modify items
+
+```shell
+# modify money and actions[1]["name"]
+$ jsonfmt --set 'money=1000; actions[1].name=swim' test/example.json
+```
+
+*Output:*
+
+```json
+{
+    "actions": [
+        {
+            "calorie": 294.9,
+            "date": "2021-03-02",
+            "name": "eat"
+        },
+        {
+            "calorie": -375,
+            "date": "2023-04-27",
+            "name": "swim"
         }
     ],
     "age": 23,
     "gender": "纯爷们",
     "money": 1000,
-    "name": "Bob",
-    "skills": [
-        "Django",
-        "Flask"
-    ]
+    "name": "Bob"
 }
 ```
 
-#### Pop some items.
+#### Pop items
 
 ```shell
-# remove the gender field and actions[1]
-$ jsonfmt --pop 'gender;actions[1]' test/example.json
+# pop `gender` and actions[1]
+$ jsonfmt --pop 'gender; actions[1]' test/example.json
 ```
 
 *Output:*
@@ -468,7 +530,7 @@ jsonfmt --set 'skills=["Django","Flask"];money=1000' --pop 'gender;actions[1]' t
 ```
 
 **Note**, however, that the above command will not modify the original JSON file.
-If you want to do this, then please read below.
+If you want to do this, read below please.
 
 ### 7. Output to file.
 
