@@ -167,10 +167,10 @@ def format_to_text(py_obj: Any, fmt: str, *,
     if fmt == 'json':
         if compact:
             return json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
-                              separators=(',', ':'))
+                              separators=(',', ':')) + '\n'
         else:
             return json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
-                              indent=indent)
+                              indent=indent) + '\n'
 
     elif fmt == 'toml':
         if not isinstance(py_obj, dict):
@@ -205,9 +205,12 @@ def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
         else:
             output_fp.write(colored_text)
     else:
-        output_fp.seek(0)
-        output_fp.truncate()
+        if output_fp.fileno() > 2:
+            output_fp.seek(0)
+            output_fp.truncate()
+
         output_fp.write(text)
+
         if output_fp.fileno() > 2:
             print_inf(f'result written to {output_fp.name}')
 
@@ -304,8 +307,9 @@ def main():
     pops = [k.strip() for k in args.pop.split(';')] if args.pop else []
 
     files = args.files or [stdin]
+    files_cnt = len(files)
 
-    for file in files:
+    for num, file in enumerate(files, start=1):
         try:
             # read from file
             input_fp = open(file, 'r+') if isinstance(file, str) else file
@@ -321,8 +325,9 @@ def main():
                     sort_keys=args.sort_keys,
                     sets=sets,
                     pops=pops)
-            # output a blank line to separate multiple results
-            print()
+            # output a line to separate multiple results
+            if num < files_cnt:
+                print('----------------', file=stdout)
         except (FormatError, JMESPathError, JSONPathError) as err:
             print_err(err)
         except FileNotFoundError:

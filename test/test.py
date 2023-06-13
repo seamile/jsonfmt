@@ -228,13 +228,13 @@ class JSONFormatToolTestCase(unittest.TestCase):
         j_compacted = jsonfmt.format_to_text(py_obj, 'json',
                                              compact=True, escape=True,
                                              indent=4, sort_keys=False)
-        self.assertEqual(j_compacted, '{"name":"\\u7ea6\\u7ff0","age":30}')
+        self.assertEqual(j_compacted.strip(), '{"name":"\\u7ea6\\u7ff0","age":30}')
 
         # format to json (indentation)
         j_indented = jsonfmt.format_to_text(py_obj, 'json',
                                             compact=False, escape=False,
                                             indent=4, sort_keys=True)
-        self.assertEqual(j_indented, '{\n    "age": 30,\n    "name": "约翰"\n}')
+        self.assertEqual(j_indented.strip(), '{\n    "age": 30,\n    "name": "约翰"\n}')
 
         # format to toml
         toml_text = jsonfmt.format_to_text(self.py_obj, 'toml',
@@ -342,10 +342,12 @@ class JSONFormatToolTestCase(unittest.TestCase):
     ############################################################################
 
     @patch.multiple(sys, argv=['jsonfmt', '-i', 't', '-p', 'actions[*].name',
-                               JSON_FILE])
+                               JSON_FILE, YAML_FILE])
     @patch.multiple(jsonfmt, stdout=FakeStdOut())
     def test_main_with_file(self):
         expected_output = color('[\n\t"eat",\n\t"sport"\n]', 'json')
+        expected_output += '----------------\n'
+        expected_output += color('- eat\n- sport', 'yaml')
         jsonfmt.main()
         self.assertEqual(jsonfmt.stdout.read(), expected_output)
 
@@ -403,7 +405,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
     @patch.multiple(jsonfmt, stdin=FakeStdIn('{"a": "asfd", "b": [1, 2, 3]}'), stdout=FakeStdOut(tty=False))
     def test_main_overview(self):
         jsonfmt.main()
-        self.assertEqual(jsonfmt.stdout.read(), '{"a":"...","b":[]}')
+        self.assertEqual(jsonfmt.stdout.read().strip(), '{"a":"...","b":[]}')
 
     @patch('sys.argv', ['jsonfmt', '-Ocsf', 'json', TOML_FILE])
     def test_main_overwrite_to_original_file(self):
