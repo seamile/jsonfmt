@@ -32,7 +32,7 @@ with open(YAML_FILE) as yaml_fp:
     YAML_TEXT = yaml_fp.read()
 
 
-def color(text, format):
+def color(text, fmt):
     fn = {
         'json': partial(highlight,
                         lexer=JsonLexer(),
@@ -43,7 +43,7 @@ def color(text, format):
         'yaml': partial(highlight,
                         lexer=YamlLexer(),
                         formatter=TerminalFormatter()),
-    }[format]
+    }[fmt]
     return fn(text)
 
 

@@ -104,8 +104,8 @@ def traverse_to_bottom(py_obj: Any, keys: str) -> Tuple[Any, Union[str, int]]:
 
     for k in _keys[:-1]:
         py_obj = py_obj[key_or_idx(py_obj, k)]
-    else:
-        return py_obj, key_or_idx(py_obj, _keys[-1])
+
+    return py_obj, key_or_idx(py_obj, _keys[-1])
 
 
 def load_value(value: str):
