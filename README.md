@@ -8,6 +8,8 @@
 
 **jsonfmt** is a powerful tool for pretty-printing, querying and conversion JSON documents.
 
+It can not only convert data formats such as XML, YAML, TOML, CSV, but also convert JSON into classes or structures in many programming languages, such as: Python, C, Cpp, C-Sharp, Rust, Java, JavaScript, Kotlin, Go, Swift, etc.
+
 It is as powerful as [jq](https://github.com/jqlang/jq), but easier to use.
 
 

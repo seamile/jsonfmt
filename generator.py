@@ -6,7 +6,7 @@ TODO:
         XML, CSV
     Languages:
         C, Cpp, Csharp, Dart, Go, Java, Javascript, Kotlin,
-        ObjectiveC, Php, Ruby, Rust, Swift, Typescript,
+        ObjectiveC, Php, Python, Ruby, Rust, Swift, Typescript
     Databases:
         MySQL, PostgreSQL, MS-SQL, SQLite3
     ORMs:
@@ -17,6 +17,23 @@ import re
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, List, Optional
+
+
+TEMPLATE_C = ''
+TEMPLATE_CPP = ''
+TEMPLATE_CSHARP = ''
+TEMPLATE_DART = ''
+TEMPLATE_GO = ''
+TEMPLATE_JAVA = ''
+TEMPLATE_JAVASCRIPT = ''
+TEMPLATE_KOTLIN = ''
+TEMPLATE_OBJECTIVEC = ''
+TEMPLATE_PHP = ''
+TEMPLATE_PYTHON = ''
+TEMPLATE_RUBY = ''
+TEMPLATE_RUST = ''
+TEMPLATE_SWIFT = ''
+TEMPLATE_TYPESCRIPT = ''
 
 
 class Type(StrEnum):
