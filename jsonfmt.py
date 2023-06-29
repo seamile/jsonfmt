@@ -10,6 +10,7 @@ from functools import partial
 from io import TextIOBase
 from pydoc import pager
 from shutil import get_terminal_size
+from signal import signal, SIGINT
 from sys import stdin, stdout, stderr, exit as sys_exit
 from typing import Any, List, IO, Optional, Sequence, Tuple, Union
 from unittest.mock import patch
@@ -276,6 +277,14 @@ def parse_cmdline_args(args: Optional[Sequence[str]] = None):
     parser.add_argument('-v', dest='version', action='version',
                         version=__version__, help="show the version")
     return parser.parse_args(args)
+
+
+def handle_interrupt(signum, _):
+    print_err('user canceled!')
+    sys_exit(0)
+
+
+signal(SIGINT, handle_interrupt)
 
 
 def main():
