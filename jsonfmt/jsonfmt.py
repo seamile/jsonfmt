@@ -2,20 +2,20 @@
 '''JSON Formatter'''
 
 import json
-import re
-import toml
-import yaml
 from argparse import ArgumentParser
 from functools import partial
 from io import TextIOBase
 from pydoc import pager
 from shutil import get_terminal_size
-from signal import signal, SIGINT
-from sys import stdin, stdout, stderr, exit as sys_exit
-from typing import Any, List, IO, Optional, Sequence, Tuple, Union
+from signal import SIGINT, signal
+from sys import exit as sys_exit
+from sys import stderr, stdin, stdout
+from typing import IO, Any, List, Optional, Sequence, Tuple, Union
 from unittest.mock import patch
 
 import pyperclip
+import toml
+import yaml
 from jmespath import compile as jcompile
 from jmespath.exceptions import JMESPathError
 from jmespath.parser import ParsedResult as JMESPath
@@ -26,10 +26,10 @@ from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 
-__version__ = '0.2.6'
+from .utils import load_value
 
-NUMERIC = re.compile(r'-?\d+$|-?\d+\.\d+$|^-?\d+\.?\d+e-?\d+$')
-DICT_OR_LIST = re.compile(r'^\{.*\}$|^\[.*\]$')
+__version__ = '0.2.7'
+
 
 QueryPath = Union[JMESPath, JSONPath]
 
@@ -107,18 +107,6 @@ def traverse_to_bottom(py_obj: Any, keys: str) -> Tuple[Any, Union[str, int]]:
         py_obj = py_obj[key_or_idx(py_obj, k)]
 
     return py_obj, key_or_idx(py_obj, _keys[-1])
-
-
-def load_value(value: str):
-    if NUMERIC.match(value):
-        return eval(value)
-    elif DICT_OR_LIST.match(value):
-        try:
-            return eval(value)
-        except Exception:
-            return value
-    else:
-        return value
 
 
 def modify_pyobj(py_obj: Any, sets: List[str], pops: List[str]):

@@ -3,21 +3,22 @@ import os
 import sys
 import tempfile
 import unittest
-import pyperclip
 from argparse import Namespace
 from copy import deepcopy
 from functools import partial
 from io import StringIO
+from unittest.mock import patch
+
+import pyperclip
 from jmespath import compile as jcompile
 from jsonpath_ng import parse as jparse
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
-from pygments.lexers import JsonLexer, YamlLexer, TOMLLexer
-from unittest.mock import patch
+from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
-import jsonfmt
+from jsonfmt import jsonfmt
 
 JSON_FILE = f'{BASE_DIR}/test/example.json'
 with open(JSON_FILE) as json_fp:
@@ -402,7 +403,9 @@ class JSONFormatToolTestCase(unittest.TestCase):
             self.assertEqual(jsonfmt.stdout.read(), colored_output)
 
     @patch.multiple(sys, argv=['jsonfmt', '-oc'])
-    @patch.multiple(jsonfmt, stdin=FakeStdIn('{"a": "asfd", "b": [1, 2, 3]}'), stdout=FakeStdOut(tty=False))
+    @patch.multiple(jsonfmt,
+                    stdin=FakeStdIn('{"a": "asfd", "b": [1, 2, 3]}'),
+                    stdout=FakeStdOut(tty=False))
     def test_main_overview(self):
         jsonfmt.main()
         self.assertEqual(jsonfmt.stdout.read().strip(), '{"a":"...","b":[]}')
@@ -421,20 +424,17 @@ class JSONFormatToolTestCase(unittest.TestCase):
     @patch.multiple(jsonfmt, stdout=FakeStdOut(), stderr=FakeStdErr())
     def test_main_copy_to_clipboard(self):
         if jsonfmt.is_clipboard_available():
-            with patch("sys.argv",
-                       ['jsonfmt', '-Ccs', JSON_FILE]):
+            with patch("sys.argv", ['jsonfmt', '-Ccs', JSON_FILE]):
                 jsonfmt.main()
                 copied_text = pyperclip.paste().strip()
                 self.assertEqual(copied_text, JSON_TEXT.strip())
 
-            with patch("sys.argv",
-                       ['jsonfmt', '-Cs', TOML_FILE]):
+            with patch("sys.argv", ['jsonfmt', '-Cs', TOML_FILE]):
                 jsonfmt.main()
                 copied_text = pyperclip.paste().strip()
                 self.assertEqual(copied_text, TOML_TEXT.strip())
 
-            with patch("sys.argv",
-                       ['jsonfmt', '-Cs', YAML_FILE]):
+            with patch("sys.argv", ['jsonfmt', '-Cs', YAML_FILE]):
                 jsonfmt.main()
                 copied_text = pyperclip.paste().strip()
                 self.assertEqual(copied_text, YAML_TEXT.strip())
@@ -448,7 +448,10 @@ class JSONFormatToolTestCase(unittest.TestCase):
         self.assertEqual(jsonfmt.stderr.read(), errmsg)
         self.assertEqual(jsonfmt.stdout.read(), color(JSON_TEXT, 'json'))
 
-    @patch.multiple(sys, argv=['jsonfmt', '--set', 'age=32; box=[1,2,3]', '--pop', 'money; actions.1'])
+    @patch.multiple(sys,
+                    argv=['jsonfmt',
+                          '--set', 'age=32; box=[1,2,3]',
+                          '--pop', 'money; actions.1'])
     @patch.multiple(jsonfmt, stdin=FakeStdIn(JSON_TEXT), stdout=FakeStdOut(tty=False))
     def test_main_modify_and_pop(self):
         try:
