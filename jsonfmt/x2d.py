@@ -37,5 +37,25 @@ def xml_to_dict(xml_text: str) -> dict[str, Any] | None:
     return {root.tag: element_to_dict(root)}
 
 
-def dict_to_xml(dict) -> str:
-    return ''
+def _dict_to_xml(dictionary, parent):
+    for key, value in dictionary.items():
+        if isinstance(value, dict):
+            child = ET.SubElement(parent, key)
+            _dict_to_xml(value, child)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    child = ET.SubElement(parent, key)
+                    _dict_to_xml(item, child)
+                else:
+                    child = ET.SubElement(parent, key)
+                    child.text = str(item)
+        else:
+            child = ET.SubElement(parent, key)
+            child.text = str(value)
+
+
+def dict_to_xml(dictionary, root_tag='root') -> Any:
+    root = ET.Element(root_tag)
+    _dict_to_xml(dictionary, root)
+    return ET.tostring(root, encoding='utf-8').decode('utf-8')

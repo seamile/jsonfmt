@@ -2,14 +2,14 @@
 '''JSON Formatter'''
 
 import json
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from functools import partial
 from io import TextIOBase
 from pydoc import pager
 from shutil import get_terminal_size
 from signal import SIGINT, signal
 from sys import exit as sys_exit
-from sys import stderr, stdin, stdout
+from sys import stdin, stdout
 from typing import IO, Any, List, Optional, Sequence, Tuple, Union
 from unittest.mock import patch
 
@@ -26,20 +26,11 @@ from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 
-from .utils import load_value
+from .utils import load_value, print_err, print_inf
 
 __version__ = '0.2.7'
 
-
 QueryPath = Union[JMESPath, JSONPath]
-
-
-def print_inf(msg: Any):
-    print(f'\033[1;94mjsonfmt:\033[0m \033[0;94m{msg}\033[0m', file=stderr)
-
-
-def print_err(msg: Any):
-    print(f'\033[1;91mjsonfmt:\033[0m \033[0;91m{msg}\033[0m', file=stderr)
 
 
 class FormatError(Exception):
@@ -132,8 +123,8 @@ def modify_pyobj(py_obj: Any, sets: List[str], pops: List[str]):
             continue
 
 
-def get_overview(py_obj: Any):
-    def clip(value: Any):
+def get_overview(py_obj: Any) -> Any:
+    def clip(value: Any) -> Any:
         if isinstance(value, str):
             return '...'
         elif isinstance(value, (list, tuple)):
@@ -232,7 +223,7 @@ def process(input_fp: IO, qpath: Optional[QueryPath], to_fmt: Optional[str],
     output(output_fp, formated_text, to_fmt, cp2clip)
 
 
-def parse_cmdline_args(args: Optional[Sequence[str]] = None):
+def parse_cmdline_args(args: Optional[Sequence[str]] = None) -> Namespace:
     parser = ArgumentParser('jsonfmt')
     parser.add_argument('-c', dest='compact', action='store_true',
                         help='suppress all whitespace separation')
