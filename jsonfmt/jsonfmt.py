@@ -27,11 +27,9 @@ from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 
-
+from . import __version__
 from .diff import compare
 from .utils import load_value, print_err, print_inf
-
-__version__ = '0.2.7'
 
 QueryPath = Union[JMESPath, JSONPath]
 TEMP_CLIPBOARD = io.StringIO()

@@ -38,4 +38,4 @@ dependencies = { file = ["requirements.txt"] }
 version = { attr = "jsonfmt.__version__" }
 
 [project.scripts]
-jsonfmt = "jsonfmt.jsonfmt:main"
+jf = "jsonfmt.jsonfmt:main"

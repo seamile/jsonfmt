@@ -6,22 +6,22 @@
 [![Code Grade](https://app.codacy.com/project/badge/Grade/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Test Coverage](https://app.codacy.com/project/badge/Coverage/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 
-**jsonfmt** is a powerful tool for pretty-printing, querying and conversion JSON documents.
+**jsonfmt** is a super awesome JSON tool. It's just as powerful as [jq](https://github.com/jqlang/jq), but easier to use.
 
-It is as powerful as [jq](https://github.com/jqlang/jq), but easier to use.
-
+You can use it for pretty-printing, querying and conversion JSON data.
+It is used for pretty-printing, querying and conversion JSON data.
 
 ## Features
 
-- [1. Pretty print JSON document.](#1-pretty-print-json-document)
+- [1. Pretty print JSON data.](#1-pretty-print-json-data)
     - [Syntax hight and indenation.](#syntax-hight-and-indenation)
     - [Read JSON from pipeline.](#read-json-from-pipeline)
-- [2. Features for handling large JSON document.](#2-features-for-handling-large-json-document)
+- [2. Features for handling large JSON data.](#2-features-for-handling-large-json-data)
     - [View a large JSON with pager-mode.](#view-a-large-json-with-pager-mode)
     - [Show the overview of a large JSON.](#show-the-overview-of-a-large-json)
     - [Copy the result to clipboard.](#copy-the-result-to-clipboard)
-- [3. Minimize the JSON document.](#3-minimize-the-json-document)
-- [4. Pick out parts of a large JSON via JMESPath or JSONPath.](#4-pick-out-parts-of-a-large-json-via-jmespath-or-jsonpath)
+- [3. Minimize the JSON data.](#3-minimize-the-json-data)
+- [4. Extract a portion of a large JSON via JMESPath or JSONPath.](#4-extract-a-portion-of-a-large-json-via-jmespath-or-jsonpath)
     - [JMESPath examples](#jmespath-examples)
     - [JSONPath examples](#jsonpath-examples)
     - [Query for TOML and YAML](#query-for-toml-and-yaml)
@@ -82,11 +82,11 @@ test/
 |- example.yaml
 ```
 
-### 1. Pretty print JSON document.
+### 1. Pretty print JSON data.
 
 #### Syntax hight and indenation.
 
-In the Python, there is a built-in tool for format JSON document: `python -m json.tool`.
+In the Python, there is a built-in tool for format JSON data: `python -m json.tool`.
 But its feature is too simple. So *jsonfmt* extends its capabilities, such as *highlight*, *pager*, *overview*, etc.
 
 By default, indentation is 2 spaces. You can specify it with option `-i`.
@@ -94,7 +94,7 @@ The number of spaces allowed is between 0 and 8. Set it to `t` if you want to us
 
 The `-s` option is used to sort the output of dictionaries alphabetically by key.
 
-If there are some non-ASCII characters in the JSON document, you can use `-e` to eascape them.
+If there are some non-ASCII characters in the JSON data, you can use `-e` to eascape them.
 
 ```shell
 $ jsonfmt -s -i 4 test/example.json
@@ -131,13 +131,13 @@ Sometimes the JSON you want to process comes from other commands. Just use `|` t
 $ cat test/example.json | jsonfmt -i 4
 ```
 
-### 2. Features for handling large JSON document.
+### 2. Features for handling large JSON data.
 
 #### View a large JSON with pager-mode.
 
 The pager-mode is similar to the command `more`.
 
-*jsonfmt* will automatically present the result in pager-mode when the JSON document is too large to overflow the window display area.
+*jsonfmt* will automatically present the result in pager-mode when the JSON data is too large to overflow the window display area.
 
 The key-binding of the pager-mode is same as command `more`:
 
@@ -162,11 +162,11 @@ curl -s 'https://api.github.com/repos/seamile/jsonfmt/commits?per_page=10' | jso
 
 #### Show the overview of a large JSON.
 
-Sometimes we just want to see the overview and don't care about the details of the JSON document. In this case the `-o` option can be used.
+Sometimes we just want to see the overview and don't care about the details of the JSON data. In this case the `-o` option can be used.
 
 It will clear sublist of the JSON and modify strings to '...' in the overview.
 
-If the *root* node of the JSON document is a list, only the first child element will be reserved in the overview.
+If the *root* node of the JSON data is a list, only the first child element will be reserved in the overview.
 
 ```shell
 $ jsonfmt -o test/test.json
@@ -205,9 +205,9 @@ Once you've done the above, you can then use <kbd>ctrl</kbd>+<kbd>v</kbd> or <kb
 - When you process multiple files, only the last result will be preserved in the clipboard.
 
 
-### 3. Minimize the JSON document.
+### 3. Minimize the JSON data.
 
-The `-c` option used to suppress all whitespace and newlines to compact the JSON document into a single line.
+The `-c` option used to suppress all whitespace and newlines to compact the JSON data into a single line.
 
 ```shell
 $ echo '{
@@ -226,13 +226,13 @@ $ echo '{
 {"age":21,"items":["pen","phone"],"name":"alex"}
 ```
 
-### 4. Pick out parts of a large JSON via JMESPath or JSONPath.
+### 4. Extract a portion of a large JSON via JMESPath or JSONPath.
 
 Unlike from jq's private solution, `jsonfmt` uses both [JMESPath](https://jmespath.org/) and [JSONPath](https://datatracker.ietf.org/doc/id/draft-goessner-dispatch-jsonpath-00.html) as its query language.
 
 Among the many JSON query languages, `JMESPath` is the most popular one ([compared here](https://npmtrends.com/JSONPath-vs-jmespath-vs-jq-vs-json-path-vs-json-query-vs-jsonata-vs-jsonpath-vs-jsonpath-plus-vs-node-jq)). It is more general than `jq`, and more intuitive and powerful than `JSONPath`. So I prefer to use it.
 
-Like the XPath for xml, `JMESPath` can elegantly extract parts of a given JSON document with simple syntax. The official tutorial of JMESPath is [here](https://jmespath.org/tutorial.html).
+Like the XPath for xml, `JMESPath` can elegantly extract parts of a given JSON data with simple syntax. The official tutorial of JMESPath is [here](https://jmespath.org/tutorial.html).
 
 #### JMESPath examples
 
@@ -572,3 +572,13 @@ If you want to do this, read below please.
     ```shell
     $ jsonfmt test/example.json > formatted.json
     ```
+
+
+## TODO
+
+[ ] add feature: json diff
+    - args: `-d`, `--diff`
+    - tools: `code --diff`, `vimdiff`, `diff`
+[ ] add feature: xml format
+[ ] add alias cmd: jf
+[ ] 增加文档的中文版
