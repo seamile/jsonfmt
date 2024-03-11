@@ -19,7 +19,7 @@ def load_value(value: str) -> Any:
 
 
 def print_inf(msg: Any):
-    print(f'\033[1;94mjsonfmt:\033[0m \033[0;94m{msg}\033[0m', file=stderr)
+    print(f'\033[0;94m{msg}\033[0m', file=stderr)
 
 
 def print_err(msg: Any):
