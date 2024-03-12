@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 from typing import Any
 
-from utils import load_value
+from .utils import load_value, print_err
 
 
 def element_to_dict(element: ET.Element) -> Any:
@@ -31,8 +31,8 @@ def element_to_dict(element: ET.Element) -> Any:
 def xml_to_dict(xml_text: str) -> dict[str, Any] | None:
     try:
         root = ET.fromstring(xml_text.strip())
-    except ET.ParseError:
-        return None
+    except ET.ParseError as err:
+        print_err(err)
 
     return {root.tag: element_to_dict(root)}
 
