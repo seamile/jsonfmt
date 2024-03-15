@@ -9,7 +9,6 @@ from argparse import ArgumentParser
 from functools import partial
 from pydoc import pager
 from shutil import get_terminal_size
-from signal import SIGINT, signal
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from typing import IO, Any, List, Optional, Sequence, Tuple, Union
 from unittest.mock import patch
@@ -17,11 +16,11 @@ from unittest.mock import patch
 import pyperclip
 import toml
 import yaml
-from jmespath import compile as jcompile
+from jmespath import compile as parse_jmespath
 from jmespath.exceptions import JMESPathError
 from jmespath.parser import ParsedResult as JMESPath
 from jsonpath_ng import JSONPath
-from jsonpath_ng import parse as jparse
+from jsonpath_ng import parse as parse_jsonpath
 from jsonpath_ng.exceptions import JSONPathError
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
@@ -29,7 +28,7 @@ from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 
 from . import __version__
 from .diff import compare
-from .utils import load_value, print_err, print_inf
+from .utils import exit_with_error, load_value, print_err, print_inf
 
 QueryPath = Union[JMESPath, JSONPath]
 TEMP_CLIPBOARD = io.StringIO()
@@ -44,6 +43,26 @@ def is_clipboard_available() -> bool:
     copy_fn, paste_fn = pyperclip.determine_clipboard()
     return copy_fn.__class__.__name__ != 'ClipboardUnavailable' \
         and paste_fn.__class__.__name__ != 'ClipboardUnavailable'
+
+
+def parse_querypath(querypath: Optional[str], querylang: Optional[str]):
+    '''parse the querypath'''
+    if querypath is None:
+        return None
+    elif querylang is None:
+        parsers = [parse_jmespath, parse_jsonpath]
+    elif querylang in ['jmespath', 'jsonpath']:
+        parsers = [{'jmespath': parse_jmespath, 'jsonpath': parse_jsonpath}[querylang]]
+    else:
+        exit_with_error(f'invalid querylang: "{querylang}"')
+
+    for parse in parsers:
+        try:
+            return parse(querypath)
+        except (JMESPathError, JSONPathError, AttributeError):
+            pass
+
+    exit_with_error(f'invalid querypath expression: "{querypath}"')
 
 
 def extract_elements(qpath: QueryPath, py_obj: Any) -> Any:
@@ -252,12 +271,11 @@ def parse_cmdline_args() -> ArgumentParser:
                         help='escape non-ASCII characters')
     parser.add_argument('-f', dest='format', choices=['json', 'toml', 'yaml'],
                         help='the format to output (default: same as input)')
-    parser.add_argument('-i', dest='indent', metavar='{0-8,t}',
+    parser.add_argument('-i', dest='indent', metavar='{0-8 or t}',
                         choices='012345678t', default='2',
                         help='number of spaces for indentation (default: %(default)s)')
-    parser.add_argument('-l', dest='querylang', default='jmespath',
-                        choices=['jmespath', 'jsonpath'],
-                        help='the language for querying (default: %(default)s)')
+    parser.add_argument('-l', dest='querylang', choices=['jmespath', 'jsonpath'],
+                        help='the language for querying (default: auto)')
     parser.add_argument('-p', dest='querypath', type=str,
                         help='the path for querying')
     parser.add_argument('-s', dest='sort_keys', action='store_true',
@@ -273,31 +291,16 @@ def parse_cmdline_args() -> ArgumentParser:
     return parser
 
 
-def handle_interrupt(signum, _):
-    print_err('user canceled!')
-    sys.exit(0)
-
-
 def main(_args: Optional[Sequence[str]] = None):
     parser = parse_cmdline_args()
     args = parser.parse_args(_args)
 
     # check and parse the querypath
-    if args.querypath is None:
-        querypath = None
-    else:
-        try:
-            parse_path_func = {'jmespath': jcompile, 'jsonpath': jparse}[args.querylang]
-            querypath = parse_path_func(args.querypath)
-        except (JMESPathError, JSONPathError, AttributeError):
-            print_err(f'invalid querypath expression: "{args.querypath}"')
-            sys.exit(1)
+    querypath = parse_querypath(args.querypath, args.querylang)
 
     # check if the clipboard is available
-    cp2clip = args.cp2clip and is_clipboard_available()
-    if args.cp2clip and not cp2clip:
-        print_err('clipboard unavailable')
-        sys.exit(1)
+    if args.cp2clip and not is_clipboard_available():
+        exit_with_error('clipboard is not available')
 
     # get sets and pops
     sets = [k.strip() for k in args.set.split(';')] if args.set else []
@@ -307,11 +310,10 @@ def main(_args: Optional[Sequence[str]] = None):
     files = args.files or [sys.stdin]
     n_files = len(files)
     if n_files < 1:
-        print_err('no data file specified')
-        sys.exit(1)
+        exit_with_error('no data file specified')
+
     if (args.diff or args.difftool) and len(files) != 2:
-        print_err('less than two files')
-        sys.exit(1)
+        exit_with_error('less than two files')
 
     diff_files = []
     for file in files:
@@ -326,18 +328,18 @@ def main(_args: Optional[Sequence[str]] = None):
             output_fp = get_output_fp(input_fp, args.cp2clip,
                                       args.diff or args.difftool,
                                       args.overview, args.overwrite)
-
             output(output_fp, formated, fmt)
-
             if args.diff or args.difftool:
                 diff_files.append(output_fp)
-
         except (FormatError, JMESPathError, JSONPathError) as err:
             print_err(err)
         except FileNotFoundError:
             print_err(f'no such file: {file}')
         except PermissionError:
             print_err(f'permission denied: {file}')
+        except KeyboardInterrupt:
+            exit_with_error('user canceled')
+
         finally:
             input_fp = locals().get('input_fp')
             if isinstance(input_fp, io.TextIOBase):
@@ -353,5 +355,4 @@ def main(_args: Optional[Sequence[str]] = None):
 
 
 if __name__ == "__main__":
-    signal(SIGINT, handle_interrupt)
     main()
