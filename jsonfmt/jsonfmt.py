@@ -10,7 +10,7 @@ from functools import partial
 from pydoc import pager
 from shutil import get_terminal_size
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
-from typing import IO, Any, List, Optional, Sequence, Tuple, Union
+from typing import IO, Any, Callable, List, Optional, Sequence, Tuple, Union
 from unittest.mock import patch
 
 import pyperclip
@@ -83,7 +83,7 @@ def extract_elements(qpath: QueryPath, py_obj: Any) -> Any:
 def parse_to_pyobj(text: str, qpath: Optional[QueryPath]) -> Tuple[Any, str]:
     '''read json, toml or yaml from IO and then match sub-element by jmespath'''
     # parse json, toml or yaml to python object
-    loads_methods = {
+    loads_methods: dict[str, Callable] = {
         'json': json.loads,
         'toml': toml.loads,
         'yaml': partial(yaml.load, Loader=yaml.Loader),
@@ -195,7 +195,7 @@ def get_output_fp(input_file: IO, cp2clip: bool, diff: bool,
     elif diff:
         name = f"_{os.path.basename(input_file.name)}"
         return NamedTemporaryFile(mode='w+', prefix='jf-', suffix=name, delete=False)
-    elif overview:
+    elif input_file is sys.stdin or overview:
         return sys.stdout
     elif overwrite:
         return input_file
