@@ -13,7 +13,7 @@
 
 </div>
 
-**jsonfmt** is a super awesome JSON tool. It's just as powerful as [jq](https://github.com/jqlang/jq), but easier to use.
+**jsonfmt** is a super awesome JSON tool. It's just as powerful as [jq](https://jqlang.github.io/jq/), but easier to use.
 
 You can use it for pretty-printing, querying and conversion JSON data.
 It is used for pretty-printing, querying and conversion JSON data.

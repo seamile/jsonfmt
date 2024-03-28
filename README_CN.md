@@ -1,6 +1,6 @@
 <div align="center">
   <img src="logo.svg" width="150">
-  <h1>JSON Formatter</h1>
+  <h1>𝑱𝒔𝒐𝒏𝑭𝒎𝒕</h1>
 </div>
 
 
@@ -14,25 +14,43 @@
 
 </div>
 
-**jsonfmt** 是一款强大的 JSON 处理工具。
+**_jsonfmt_**（means: JSON Formatter）是一款简单而强大的 JSON 处理工具。
 
-🎨 它不仅可以用来漂亮的打印 JSON 数据。
+众所周知，Python 自身已经内置了一个用于格式化 JSON 数据的工具：`python -m json.tool`。但是它的功能过于简单，因此 jsonfmt 在此基础上做了很多实用的扩展：
 
-🔄 也可以将 JSON、TOML、YAML 数据进行互相转化。
+🎨 它不仅可以用来漂亮的打印 JSON 数据，
 
-🔎 此外，它还可以通过 JMESPATH 或 JSONPATH 来提取 JSON 中的内容。
+🔄 也可以将 JSON、TOML、YAML 数据进行互相转化，
+
+🔎 还可以通过 JMESPATH 或 JSONPATH 来提取 JSON 中的内容。
 
 👀 您甚至可以通过 **jsonfmt** 对两个 JSON 或其他格式的数据进行差异对比。
 
 
-## 安装
+- [快速上手](#快速上手)
+    - [安装](#安装)
+    - [用法](#用法)
+- [使用说明](#使用说明)
+    - [1. 漂亮地打印 JSON 数据](#1-漂亮地打印-json-数据)
+    - [2. 最小化 JSON 数据](#2-最小化-json-数据)
+    - [3. 提取 JSON 数据的部分内容](#3-提取-json-数据的部分内容)
+    - [4. 格式转换](#4-格式转换)
+    - [5. 差异对比](#5-差异对比)
+    - [6. 方便的处理大型 JSON 数据](#6-方便的处理大型-json-数据)
+    - [7. 修改输入数据中的某些值](#7-修改输入数据中的某些值)
+    - [8. 输出到文件](#8-输出到文件)
+- [TODO](#todo)
+
+
+## 快速上手
+
+### 安装
 
 ```shell
 $ pip install jsonfmt
 ```
 
-
-## 使用方法
+### 用法
 
 1. 处理文件中的数据。
 
@@ -46,11 +64,11 @@ $ pip install jsonfmt
   $ echo '{"hello": "world"}' | jf [可选参数]
   ```
 
-### 位置参数
+**位置参数**
 
 `files`: 要处理的数据文件，支持 JSON / TOML / YAML 格式。
 
-### 可选参数
+**可选参数**
 
 - `-h`: 显示帮助文档。
 - `-C`: 复制模式，此模式会将处理结果复制到剪贴板。
@@ -71,9 +89,34 @@ $ pip install jsonfmt
 - `-v`: 显示版本号
 
 
-## Example
+## 使用说明
 
-There are some test data in folder `test`:
+为了演示 jsonfmt 的功能，我们需要先创建一份测试数据，并将其保存到文件 example.json 中。文件内容如下所示：
+
+```json
+{
+    "name": "Bob",
+    "age": 23,
+    "gender": "纯爷们",
+    "money": 3.1415926,
+    "actions": [
+        {
+            "name": "eat",
+            "calorie": 294.9,
+            "date": "2021-03-02"
+        },
+        {
+            "name": "sport",
+            "calorie": -375,
+            "date": "2023-04-27"
+        }
+    ]
+}
+```
+
+然后，再将这份数据转换为 TOML 和 YAML 格式，分别保存到文件 example.toml 和 example.yaml 中。
+
+这些数据文件可以在源码的 *test* 文件夹中找到:
 
 ```
 test/
@@ -82,25 +125,23 @@ test/
 |- example.yaml
 ```
 
-### 1. Pretty print JSON data.
+### 1. 漂亮地打印 JSON 数据
 
-#### Syntax hight and indenation.
+#### 语法高亮和缩进
 
-In the Python, there is a built-in tool for format JSON data: `python -m json.tool`.
-But its feature is too simple. So *jsonfmt* extends its capabilities, such as *highlight*, *pager*, *overview*, etc.
+jsonfmt 默认的工作模式就是对数据进行格式化处理，并以带有语法高亮的形式进行打印。
 
-By default, indentation is 2 spaces. You can specify it with option `-i`.
-The number of spaces allowed is between 0 and 8. Set it to `t` if you want to use <kbd>tab</kbd> for indentation.
+选项 `-i` 可以指定缩进的空格数量。默认情况下，缩进为 2 个空格，允许的空格数介于 0 到 8 之间。如果想要使用制表符 <kbd>tab</kbd> 作为缩进，可将其设置为 `t`。
 
-The `-s` option is used to sort the output of dictionaries alphabetically by key.
+选项 `-s` 用于按字典键名顺序对输出结果进行排序。
 
-If there are some non-ASCII characters in the JSON data, you can use `-e` to eascape them.
+如果 JSON 数据中有一些非 ASCII 字符，您可以使用 `-e` 对它们进行转义。
 
 ```shell
-$ jsonfmt -s -i 4 test/example.json
+$ jf -s -i 4 test/example.json
 ```
 
-*Output:*
+输出：
 
 ```json
 {
@@ -123,56 +164,410 @@ $ jsonfmt -s -i 4 test/example.json
 }
 ```
 
-#### Read JSON from pipeline.
+#### 从管道读取 JSON
 
-Sometimes the JSON you want to process comes from other commands. Just use `|` to read it from pipeline.
-
-```shell
-$ cat test/example.json | jsonfmt -i 4
-```
-
-### 2. Features for handling large JSON data.
-
-#### View a large JSON with pager-mode.
-
-The pager-mode is similar to the command `more`.
-
-*jsonfmt* will automatically present the result in pager-mode when the JSON data is too large to overflow the window display area.
-
-The key-binding of the pager-mode is same as command `more`:
-
-| key                          | description               |
-|------------------------------|---------------------------|
-| <kbd>j</kbd>                 | forward  by line          |
-| <kbd>k</kbd>                 | backward by line          |
-| <kbd>f</kbd>                 | forward by page           |
-| <kbd>ctrl</kbd>+<kbd>f</kbd> | forward by page           |
-| <kbd>b</kbd>                 | backward by page          |
-| <kbd>ctrl</kbd>+<kbd>b</kbd> | backward by page          |
-| <kbd>g</kbd>                 | go to the top of the page |
-| <kbd>G</kbd>                 | go to the bottom          |
-| <kbd>/</kbd>                 | search mode               |
-| <kbd>q</kbd>                 | quit pager-mode           |
-
-There is a big JSON from GitHub, you can paste this command into terminal to try the pager-mode:
+如果要处理的数据来自于其他命令的输出，这时只需使用管道 `|` 连接两个命令，从“标准输入”中取即可。
 
 ```shell
-curl -s 'https://api.github.com/repos/seamile/jsonfmt/commits?per_page=10' | jsonfmt
+$ curl -s https://jsonplaceholder.typicode.com/posts/1 | jf -i 4
 ```
 
-#### Show the overview of a large JSON.
+输出：
 
-Sometimes we just want to see the overview and don't care about the details of the JSON data. In this case the `-o` option can be used.
+```json
+{
+    "userId": 1,
+    "id": 1,
+    "title": "sunt aut facere repellat provident occaecati excepturi optio reprehenderit",
+    "body": "quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nrep..."
+}
 
-It will clear sublist of the JSON and modify strings to '...' in the overview.
+```
 
-If the *root* node of the JSON data is a list, only the first child element will be reserved in the overview.
+### 2. 最小化 JSON 数据
+
+选项 `-c` 可用于压缩所有空白和换行符，将 JSON 数据紧凑地表示为单行。
 
 ```shell
-$ jsonfmt -o test/test.json
+$ echo '{
+    "name": "alex",
+    "age": 21,
+    "items": [
+        "pen",
+        "phone"
+    ]
+}' | jf -c
 ```
 
-*Output:*
+输出：
+
+```json
+{"age":21,"items":["pen","phone"],"name":"alex"}
+```
+
+### 3. 提取 JSON 数据的部分内容
+
+jsonfmt 同时使用 [**JMESPath**](https://jmespath.org/) 和 [**JSONPath**](https://datatracker.ietf.org/doc/id/draft-goessner-dispatch-jsonpath-00.html) 作为其查询语言。
+
+**JMESPath**（JSON Meta Language for Expression Path）是由 AWS 推出的一种查询语言，用于处理JSON数据。在众多 JSON 查询语言中，JMESPath 似乎是使用最广、增长最快、评价最好的解决方案。它比 [**jq**](https://jqlang.github.io/jq/) 的语法更简洁、更通用，比 JSONPath 的功能更丰富、更强大，因此我更倾向于使用它作为主要的 JSON 查询语言。
+
+JMESPath 可以优雅地使用简单的语法从 JSON 数据中提取一部分内容，也可以将过滤后的数据组成一个新的对象或数组。JMESPath 的官方教程在[这里](https://jmespath.org/tutorial.html)。
+
+#### JMESPath 示例
+
+- 提取 *example.json* 中 `actions` 的第一项：
+
+    ```shell
+    $ jf -p 'actions[0]' test/example.json
+    ```
+
+    输出：
+
+    ```json
+    {
+        "calorie": 294.9,
+        "date": "2021-03-02",
+        "name": "eat"
+    }
+    ```
+
+- 过滤 `actions` 中所有 `calorie > 0` 的项。
+
+    ```shell
+    # 此处的 `0` 表示 0 是一个数字
+    $ jf -p 'actions[?calorie>`0`]' test/example.json
+    ```
+
+    输出：
+
+    ```json
+    [
+        {
+            "name": "eat",
+            "calorie": 294.9,
+            "date": "2021-03-02"
+        }
+    ]
+    ```
+
+- 显示所有键和 `actions` 的长度。
+
+    ```shell
+    $ jf -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.json
+    ```
+
+    输出：
+
+    ```json
+    {
+        "all_keys": [
+            "name",
+            "age",
+            "gender",
+            "money",
+            "actions"
+    ],
+        "actions_len": 2
+    }
+    ```
+
+- 按 `actions` 中每一项的  `calorie` 值进行排序，并将结果定义成一个新字典。
+
+    ```shell
+    $ jf -p 'sort_by(actions, &calorie)[].{foo: name, bar:calorie}' test/example.json
+    ```
+
+    输出：
+
+    ```json
+    [
+        {
+            "foo": "sport",
+            "bar": -375
+        },
+        {
+            "foo": "eat",
+            "bar": 294.9
+        }
+    ]
+    ```
+
+[更多 JMESPath 示例](https://jmespath.org/examples.html)。
+
+#### JSONPath 示例
+
+JSONPath 的设计灵感来源于 XPath。因此它可以像 XPath 那样通过类似于路径表达式的方式精准地定位到 JSON 文档中的任意元素，从而实现对复杂嵌套数据的高效检索、筛选与操作。
+
+不同于 XML 的标签层级结构，JSONPath 针对 JSON 的键值对和数组进行了特殊处理，使得用户可以方便地访问多级对象属性、遍历对象和数组，以及根据条件过滤数据。
+
+有些使用 JMESPath 难以处理的查询，JSONPath 却可以很轻松的实现。
+
+- 通过相对路径过滤所有 `name` 字段:
+
+    ```shell
+    # 使用 -l 指定 JSON 的查询语言为 JSONPath
+    $ jf -l jsonpath -p '$..name' test/example.json
+    ```
+
+    输出：
+
+    ```json
+    [
+        "Bob",
+        "eat",
+        "sport"
+    ]
+    ```
+
+#### 查询 TOML 和 YAML
+
+**令人惊讶的是**，使用 jsonfmt 您可以用同样的方式处理 TOML 和 YAML，并任意转换结果格式。甚至可以在单个命令中同时处理这三种格式。
+
+- 从 toml 文件读取数据，并以 YAML 格式输出
+
+    ```shell
+    $ jf -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.toml -f yaml
+    ```
+
+    输出：
+
+    ```yaml
+    all_keys:
+    - name
+    - age
+    - gender
+    - money
+    - actions
+    actions_len: 2
+    ```
+
+- 同时处理三种格式
+
+    ```shell
+    $ jf -p 'actions[0]' test/example.json test/example.toml test/example.yaml
+    ```
+
+    输出：
+
+    ```yaml
+    1. test/example.json
+    {
+        "name": "eat",
+        "calorie": 294.9,
+        "date": "2021-03-02"
+    }
+
+    2. test/example.toml
+    name = "eat"
+    calorie = 294.9
+    date = "2021-03-02"
+
+    3. test/example.yaml
+    name: eat
+    calorie: 294.9
+    date: '2021-03-02'
+    ```
+
+
+### 4. 格式转换
+
+*jsonfmt* 支持 JSON、TOML 和 YAML 格式的处理。每种格式都可以通过指定 "-f" 选项转换为其他格式。
+
+<div style="color: orange"><strong>注意:</strong></div>
+在 TOML 中,`null` 值是无效的。因此，从其他格式转换为 TOML 时，所有的 null 值都将被删除。
+
+#### JSON 转换为 TOML
+
+```shell
+$ jf test/example.json -f toml
+```
+
+输出：
+
+```toml
+name = "Bob"
+age = 23
+gender = "纯爷们"
+money = 3.1415926
+[[actions]]
+name = "eat"
+calorie = 294.9
+date = "2021-03-02"
+
+[[actions]]
+name = "sport"
+calorie = -375
+date = "2023-04-27"
+```
+
+#### TOML 转换为 YAML
+
+```shell
+$ jf test/example.toml -f yaml
+```
+
+输出：
+
+```yaml
+name: Bob
+age: 23
+gender: 纯爷们
+money: 3.1415926
+actions:
+- name: eat
+  calorie: 294.9
+  date: '2021-03-02'
+- name: sport
+  calorie: -375
+  date: '2023-04-27'
+```
+
+#### YAML 转换为 JSON
+
+```shell
+$ jf test/example.yaml -f json
+```
+
+输出：
+
+```json
+{
+    "name": "Bob",
+    "age": 23,
+    "gender": "纯爷们",
+    "money": 3.1415926,
+    "actions": [
+        {
+            "name": "eat",
+            "calorie": 294.9,
+            "date": "2021-03-02"
+        },
+        {
+            "name": "sport",
+            "calorie": -375,
+            "date": "2023-04-27"
+        }
+    ]
+}
+```
+
+
+### 5. 差异对比
+
+在开发中，我们经常需要对某些数据或者配置进行差异对比。比如某个 API 在传入不同参数时返回结果的差异，或者运维人员需要对某个系统不同格式的配置文件做差异对比。
+
+jsonfmt 支持多种差异对比工具，如：`diff`、`vimdiff`、`git`、`code`、`kdiff3`、`meld`，也支持 Windows 上的 `WinMerge` 和 `fc`。
+
+默认情况下，jsonfmt 会首先检查电脑上是否安装了 git，并调用 `git config --global diff.tool` 读取其配置的 difftool。如果未设置该项则使用 git 默认的差异对比工具进行处理。如果电脑上没有安装 git，则会按照 `code`、`kdiff3`、`meld`、`vimdiff`、`diff`、`WinMerge`、`fc` 的顺序进行查找。如果未找到可用的差异对比工具会报错退出。
+
+```shell
+$ jf -d test/todo1.json test/todo2.json
+```
+
+输出：
+
+```diff
+--- /tmp/.../jf-jjn86s7r_todo1.json     2024-03-23 18:22:00
++++ /tmp/.../jf-vik3bqsu_todo2.json     2024-03-23 18:22:00
+@@ -1,6 +1,6 @@
+ {
+-  "id": 1,
+-  "userId": 1072,
+-  "title": "delectus aut autem",
++  "userId": 1092,
++  "id": 9,
++  "title": "molestiae perspiciatis ipsa",
+   "completed": false
+ }
+```
+
+您也可以使用 `-D DIFFTOOL` 选项来指定一个工具来进行差异对比。对于前面没有提到的工具，只要其命令格式为 `cmd file1 file2` 就可以使用 `-D` 选项来指定。如果指定的差异对比工具需要特殊参数，可以使用 `-D 'DIFFTOOL OPTIONS'` 来操作。
+
+```shell
+$ jf -D 'diff --ignore-case --color=always' test/todo1.json test/todo2.json
+```
+
+输出：
+
+```diff
+2,4c2,4
+<   "id": 1,
+<   "userId": 1072,
+<   "title": "delectus aut autem",
+---
+>   "userId": 1092,
+>   "id": 9,
+>   "title": "molestiae perspiciatis ipsa",
+```
+
+对于不同来源的数据，其格式、缩进，以及键的顺序可能都不一样，这时可以使用 `-s`、`-i`、`-f` 配合来进行差异对比。
+
+```shell
+$ jf -d -s -f toml test/todo1.json test/todo3.toml
+```
+
+输出：
+
+```diff
+--- /var/.../jf-qw9vm33n_todo1.json     2024-03-23 18:29:17
++++ /var/.../jf-dqb_fl4x_todo3.toml     2024-03-23 18:29:17
+@@ -1,4 +1,4 @@
+-id = 1
+-userId = 1072
+-title = "delectus aut autem"
++userId = 1
++id = 3
++title = "fugiat veniam minus"
+ completed = false
+```
+
+在差异对比模式下，jsonfmt 会先将需要对比的数据进行格式化处理，并将它们写入到临时文件，然后再调用指定的工具进行差异对比。对比结束后，这个临时文件会被自动删除。如果选择 VS Code 作为差异对比工具，那么产生的临时文件不会被立即删除，它会由操作系统在执行清理操作时删除。
+
+### 6. 方便的处理大型 JSON 数据
+
+很多时候来自于程序接口的 JSON 数据非常大，这会给我们阅读、调试、处理带来很多困难。jsonfmt 提供了四种方式来处理大型 JSON 数据：
+
+- 使用 JMESPath 或 JSONPath 读取一部分内容（[前文已经做过介绍](#3-提取-json-数据的部分内容)）
+- [使用分页模式查看较大的 JSON 数据](#使用分页模式查看较大的-json-数据)
+- [显示大型 JSON 数据的概览](#显示大型-json-数据的概览)
+- [将处理结果复制到剪贴板](#将处理结果复制到剪贴板)
+
+#### 使用分页模式查看较大的 JSON 数据
+
+分页模式类似于 `more` 命令。当 JSON 数据过大而无法在窗口显示区域内完全显示时，*jsonfmt* 将自动以分页模式呈现结果。
+
+分页模式的操作与 `more` 命令相同:
+
+| 键                                            | 描述         |
+|-----------------------------------------------|--------------|
+| <kbd>j</kbd>                                  | 前进一行     |
+| <kbd>k</kbd>                                  | 后退一行     |
+| <kbd>f</kbd> 或 <kbd>ctrl</kbd>+<kbd>f</kbd>  | 前进一页     |
+| <kbd>b</kbd>  或 <kbd>ctrl</kbd>+<kbd>b</kbd> | 后退一页     |
+| <kbd>g</kbd>                                  | 跳到页面顶部 |
+| <kbd>G</kbd>                                  | 跳到页面底部 |
+| <kbd>/</kbd>                                  | 搜索模式     |
+| <kbd>q</kbd>                                  | 退出分页模式 |
+
+这里有一个来自 GitHub 的大型 JSON，您可以将此命令粘贴到终端以尝试分页模式:
+
+```shell
+curl -s https://jsonplaceholder.typicode.com/users | jf
+```
+
+#### 显示大型 JSON 数据的概览
+
+有时我们只想看到 JSON 数据的概览而不关心具体细节，这时可以使用 `-o` 选项。
+
+它将清除 JSON 中的子列表，并将字符串修改为 `...` 以显示概览。
+
+如果 JSON 数据的根节点是一个列表，概览中仅保留它的第一个子元素。
+
+```shell
+$ jf -o test/test.json
+```
+
+输出：
 
 ```json
 {
@@ -184,401 +579,148 @@ $ jsonfmt -o test/test.json
 }
 ```
 
-#### Copy the result to clipboard.
+#### 将处理结果复制到剪贴板
 
-If you want to copy the result into a file and the output of JSON is more than one page in the terminal, it's going to be hard to do.
+如果您想将处理后的结果粘贴到文件中，但终端中打印的内容超过了一页时，复制起来会比较困难。
 
-At this time, you can specify the `-C` option to copy the result to the clipboard automatically.
-
-```shell
-$ jsonfmt -C test/example.json
-
-# Output
-jsonfmt: result copied to clipboard.
-```
-
-Once you've done the above, you can then use <kbd>ctrl</kbd>+<kbd>v</kbd> or <kbd>cmd</kbd>+<kbd>v</kbd> to paste the result anywhere on your computer.
-
-<div style="color: orange"><strong>Note these:</strong></div>
-
-- When you specify the `-C` option, any output destination other than the clipboard will be ignored.
-- When you process multiple files, only the last result will be preserved in the clipboard.
-
-
-### 3. Minimize the JSON data.
-
-The `-c` option used to suppress all whitespace and newlines to compact the JSON data into a single line.
+此时，您可以通过 `-C` 选项，将结果自动复制到剪贴板。
 
 ```shell
-$ echo '{
-    "name": "alex",
-    "age": 21,
-    "items": [
-        "pen",
-        "phone"
-    ]
-}' | jsonfmt -c
+$ jf -C test/example.json
 ```
 
-*Output:*
+完成上述操作后，您可以使用 <kbd>ctrl</kbd>+<kbd>v</kbd> 或 <kbd>cmd</kbd>+<kbd>v</kbd> 将结果粘贴到其他文档中。
 
-```json
-{"age":21,"items":["pen","phone"],"name":"alex"}
-```
+<div style="color: orange"><strong>注意:</strong></div>
 
-### 4. Extract a portion of a large JSON via JMESPath or JSONPath.
-
-Unlike from jq's private solution, `jsonfmt` uses both [JMESPath](https://jmespath.org/) and [JSONPath](https://datatracker.ietf.org/doc/id/draft-goessner-dispatch-jsonpath-00.html) as its query language.
-
-Among the many JSON query languages, `JMESPath` is the most popular one ([compared here](https://npmtrends.com/JSONPath-vs-jmespath-vs-jq-vs-json-path-vs-json-query-vs-jsonata-vs-jsonpath-vs-jsonpath-plus-vs-node-jq)). It is more general than `jq`, and more intuitive and powerful than `JSONPath`. So I prefer to use it.
-
-Like the XPath for xml, `JMESPath` can elegantly extract parts of a given JSON data with simple syntax. The official tutorial of JMESPath is [here](https://jmespath.org/tutorial.html).
-
-#### JMESPath examples
-
-- pick out the first actions in `example.json`
-
-    ```shell
-    $ jsonfmt -p 'actions[0]' test/example.json
-    ```
-
-    *Output:*
-
-    ```json
-    {
-        "calorie": 294.9,
-        "date": "2021-03-02",
-        "name": "eat"
-    }
-    ```
-
-- Filter all items in `actions` with `calorie` > 0.
-
-    ```shell
-    $ jsonfmt -p 'actions[?calorie>`0`]' test/example.json
-    ```
-
-    *Output:*
-
-    ```json
-    [
-        {
-            "calorie": 294.9,
-            "date": "2021-03-02",
-            "name": "eat"
-        }
-    ]
-    ```
-
-- Show all the keys and actions' length.
-
-    ```shell
-    $ jsonfmt -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.json
-    ```
-
-    *Output:*
-
-    ```json
-    {
-        "all_keys": [
-            "actions",
-            "age",
-            "gender",
-            "money",
-            "name"
-    ],
-        "actions_len": 2
-    }
-    ```
-
-- Sort `actions` by `calorie` and redefine a dict.
-
-    ```shell
-    $ jsonfmt -p 'sort_by(actions, &calorie)[].{name: name, calorie:calorie}' test/example.json
-    ```
-
-    *Output:*
-
-    ```json
-    [
-        {
-            "name": "sport",
-            "calorie": -375
-        },
-        {
-            "name": "eat",
-            "calorie": 294.9
-        }
-    ]
-    ```
-
-[More examples of JMESPath](https://jmespath.org/examples.html).
-
-#### JSONPath examples
-
-The syntax of `JSONPath` is very similar to that of `JMESPath`. Everything that `JSONPath` can do `JMESPath` can also do, except using relative path querying. So `JSONPath` can be used as a supplementary query method of `JMESPath`.
-
-- Filter all `name` fields by relative path:
-
-    ```shell
-    # use `-l` to specify the query language of JSON
-    $ jsonfmt.py -l jsonpath -p '$..name' test/example.json
-    ```
-
-    *Output:*
-
-    ```json
-    [
-        "Bob",
-        "eat",
-        "sport"
-    ]
-    ```
-
-#### Query for TOML and YAML
-
-**Amazingly**, you can do all of the above with TOML and YAML in the same way, and convert the result format arbitrarily. It is even possible to process all three formats simultaneously in a single command.
-
-- Read the data from toml file, and convert the result to yaml
-
-    ```shell
-    $ jsonfmt -p '{all_keys:keys(@), actions_len:length(actions)}' test/example.toml -f yaml
-    ```
-
-    *Output:*
-
-    ```yaml
-    all_keys:
-    - age
-    - gender
-    - money
-    - name
-    - actions
-    actions_len: 2
-    ```
-
-- Handle three formats simultaneously
-
-    ```shell
-    $ jsonfmt.py -p 'actions[0]' test/example.json test/example.toml test/example.yaml
-    ```
-
-    *Output:*
-
-    ```
-    {
-        "calorie": 294.9,
-        "date": "2021-03-02",
-        "name": "eat"
-    }
-
-    calorie = 294.9
-    date = "2021-03-02"
-    name = "eat"
-
-    calorie: 294.9
-    date: '2021-03-02'
-    name: eat
-    ```
+当同时处理多个目标时，比如：`jf -C file1 file2 file3 ...`，jsonfmt 会将所有文件的处理结果都复制到剪贴板，多个结果之间使用两个换行符 '\n\n' 进行分隔。
 
 
-### 5. Convert formats between JSON, TOML and YAML.
+### 7. 修改输入数据中的某些值
 
-The *jsonfmt* can recognize any format of JSON, TOML and YAML from files or `stdin`. Either formats can be converted to the other by specifying the "-f" option.
+当您需要更改输入文档中的某些内容时，请使用 `--set` 和 `--pop` 选项。
 
-<div style="color: orange"><strong>Note that:</strong></div>
-The `null` value is invalid in TOML. Therefore, any null values from JSON or YAML will be removed when converting to TOML.
+格式为 `--set 'key=value'`。如果需要修改多个值，可以使用 `;` 分隔:`--set 'k1=v1;k2=v2'`。如果键值对不存在，则会被添加。
 
-#### JSON to TOML and YAML
+对于列表中的项目，请使用 `key[i]` 或 `key.i` 指定。如果索引大于或等于元素个数,则值将被追加。
+
+#### 添加键值对
 
 ```shell
-$ jsonfmt test/example.json -f toml
+# 添加 country = China，并为 actions 追加一项
+$ jf --set 'country=China; actions[2]={"name": "drink"}' test/example.json
 ```
 
-*Output:*
-
-```toml
-age = 23
-gender = "纯爷们"
-money = 3.1415926
-name = "Bob"
-[[actions]]
-calorie = 294.9
-date = "2021-03-02"
-name = "eat"
-
-[[actions]]
-calorie = -375
-date = "2023-04-27"
-name = "sport"
-```
-
-```shell
-$ jsonfmt test/example.json -f yaml
-```
-
-*Output:*
-
-```yaml
-actions:
-- calorie: 294.9
-  date: '2021-03-02'
-  name: eat
-- calorie: -375
-  date: '2023-04-27'
-  name: sport
-age: 23
-gender: 纯爷们
-money: 3.1415926
-name: Bob
-```
-
-#### TOML to JSON and YAML
-
-```shell
-# toml to json
-$ jsonfmt test/example.toml -f json
-# toml to yaml
-$ jsonfmt test/example.toml -f yaml
-```
-
-#### YAML to JSON and TOML
-
-```shell
-# yaml to json
-$ jsonfmt test/example.yaml -f json
-
-# yaml to toml
-$ jsonfmt test/example.yaml -f toml
-```
-
-### 6. Modify some values in the input data.
-
-Use the `--set` and `--pop` options when you want to change something in the input documents.
-
-The format is `--set 'key=value'`. When you need to modify multiple values ​​you can use `;` to separate: `--set 'k1=v1;k2=v2'`. If the key-value pair dose not exist, it will be added.
-
-For the items in list, use `key[i]` or `key.i` to specify. If the index is greater than or equal to the number of elements, the value will be appended.
-
-#### Add items
-
-```shell
-# add `country` key and append one item for `actions`
-$ jsonfmt --set 'country=China; actions[2]={"name": "drink"}' test/example.json
-```
-
-*Output:*
+输出：
 
 ```json
 {
+    "name": "Bob",
+    "age": 23,
+    "gender": "纯爷们",
+    "money": 3.1415926,
     "actions": [
         {
+            "name": "eat",
             "calorie": 294.9,
-            "date": "2021-03-02",
-            "name": "eat"
+            "date": "2021-03-02"
         },
         {
+            "name": "sport",
             "calorie": -375,
-            "date": "2023-04-27",
-            "name": "sport"
+            "date": "2023-04-27"
         },
         {
             "name": "drink"
         }
     ],
-    "age": 23,
-    "country": "China",
-    "gender": "纯爷们",
-    "money": 3.1415926,
-    "name": "Bob"
+    "country": "China"
 }
 ```
 
-#### Modify items
+#### 修改值
 
 ```shell
-# modify money and actions[1]["name"]
-$ jsonfmt --set 'money=1000; actions[1].name=swim' test/example.json
+# 修改 money 和 actions[1]["name"]
+$ jf --set 'money=1000; actions[1].name=swim' test/example.json
 ```
 
-*Output:*
+输出：
 
 ```json
 {
-    "actions": [
-        {
-            "calorie": 294.9,
-            "date": "2021-03-02",
-            "name": "eat"
-        },
-        {
-            "calorie": -375,
-            "date": "2023-04-27",
-            "name": "swim"
-        }
-    ],
+    "name": "Bob",
     "age": 23,
     "gender": "纯爷们",
     "money": 1000,
-    "name": "Bob"
+    "actions": [
+        {
+            "name": "eat",
+            "calorie": 294.9,
+            "date": "2021-03-02"
+        },
+        {
+            "name": "swim",
+            "calorie": -375,
+            "date": "2023-04-27"
+        }
+    ]
 }
 ```
 
-#### Pop items
+#### 删除键值对
 
 ```shell
-# pop `gender` and actions[1]
-$ jsonfmt --pop 'gender; actions[1]' test/example.json
+# 删除 gender 和 actions[1]
+$ jf --pop 'gender; actions[1]' test/example.json
 ```
 
-*Output:*
+输出：
 
 ```json
 {
-    "actions": [
-        {
-            "calorie": 294.9,
-            "date": "2021-03-02",
-            "name": "eat"
-        }
-    ],
+    "name": "Bob",
     "age": 23,
     "money": 3.1415926,
-    "name": "Bob"
+    "actions": [
+        {
+            "name": "eat",
+            "calorie": 294.9,
+            "date": "2021-03-02"
+        }
+    ]
 }
 ```
 
-Of course you can use `--set` and `--pop` together.
+当然，您也可以同时使用 `--set` 和 `--pop`。
 
 ```shell
-jsonfmt --set 'skills=["Django","Flask"];money=1000' --pop 'gender;actions[1]' test/example.json
+jf --set 'skills=["Django","Flask"];money=1000' --pop 'gender;actions[1]' test/example.json
 ```
 
-**Note**, however, that the above command will not modify the original JSON file.
-If you want to do this, read below please.
+<div style="color: orange"><strong>注意:</strong></div>
+上述命令不会修改原始 JSON 文件。如果您想这样做，请继续阅读下文。
 
-### 7. Output to file.
 
-- use the `-O` parameter to overwrite the file with the result.
+### 8. 输出到文件
 
-    This option will be forced to close when `-o` is specified
+jsonfmt 并没有专门提供将处理结果写入到文件的选项。因为使用终端的重定向符号 `>` 可以很方便的处理这个事情，而且不管是 Linux 还是 Windows 都支持这一操作。
 
-    ```shell
-    $ jsonfmt --set 'name=Alex' -O test/example.json
-    ```
+```shell
+$ jf -si 4 test/example.json > formatted.json
+```
 
-- write the result to a new file (use symbol `>`).
+如果需要将处理结果覆盖到原文件，可以使用 `-O` 选项：
 
-    ```shell
-    $ jsonfmt test/example.json > formatted.json
-    ```
+```shell
+# 按照对象的 key 进行排序，缩进设置为 4 个空格，将 name 的值设置为 Alex，并将最终结果写入到原文件中
+$ jf -s -i 4 --set 'name=Alex' -O test/example.json
+```
 
 
 ## TODO
 
-[ ] add feature: json diff
-    - args: `-d`, `--diff`
-    - tools: `code --diff`, `vimdiff`, `diff`
-[ ] add feature: xml format
-[ ] add alias cmd: jf
-[ ] 增加文档的中文版
+- [ ] 增加 XML 格式支持
+- [ ] 增加 INI 格式支持
+- [ ] 增加 URL 支持，可以直接对比来自两个 API 的数据
+- [ ] 增加 merge 模式，将多个 JSON 或其他格式的数据合并成一个

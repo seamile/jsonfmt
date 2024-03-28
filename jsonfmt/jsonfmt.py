@@ -6,6 +6,7 @@ import json
 import os
 import sys
 from argparse import ArgumentParser
+from collections import OrderedDict
 from functools import partial
 from pydoc import pager
 from shutil import get_terminal_size
@@ -121,6 +122,17 @@ def traverse_to_bottom(py_obj: Any, keys: str) -> Tuple[Any, Union[str, int]]:
     return py_obj, key_or_idx(py_obj, _keys[-1])
 
 
+def sort_dict(py_obj: Any) -> Any:
+    '''sort the dicts in py_obj by keys'''
+    if isinstance(py_obj, dict):
+        sorted_items = sorted((key, sort_dict(value)) for key, value in py_obj.items())
+        return OrderedDict(sorted_items)
+    elif isinstance(py_obj, list):
+        return [sort_dict(item) for item in py_obj]
+    else:
+        return py_obj
+
+
 def modify_pyobj(py_obj: Any, sets: List[str], pops: List[str]):
     '''add, modify or pop items for PyObj'''
     for kv in sets:
@@ -167,34 +179,34 @@ def format_to_text(py_obj: Any, fmt: str, *,
     '''format the py_obj to text'''
     if fmt == 'json':
         if compact:
-            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
-                              separators=(',', ':')) + '\n'
+            result = json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
+                                separators=(',', ':'))
         else:
-            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
-                              indent='\t' if indent == 't' else int(indent)) + '\n'
-
+            result = json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
+                                indent='\t' if indent == 't' else int(indent))
     elif fmt == 'toml':
         if not isinstance(py_obj, dict):
             msg = 'the pyobj must be a Mapping when format to toml'
             raise FormatError(msg)
-        return toml.dumps(py_obj)
-
+        result = toml.dumps(sort_dict(py_obj) if sort_keys else py_obj)
     elif fmt == 'yaml':
         _indent = None if indent == 't' else int(indent)
-        return yaml.safe_dump(py_obj, allow_unicode=not escape, indent=_indent,
-                              sort_keys=sort_keys)
-
+        result = yaml.safe_dump(py_obj, allow_unicode=not escape, indent=_indent,
+                                sort_keys=sort_keys)
     else:
         raise FormatError('Unknow format')
 
+    return result.strip() + '\n'
+
 
 def get_output_fp(input_file: IO, cp2clip: bool, diff: bool,
-                  overview: bool, overwrite: bool) -> IO:
+                  overview: bool, overwrite: bool, del_tmpfile=True) -> IO:
     if cp2clip:
         return TEMP_CLIPBOARD
     elif diff:
         name = f"_{os.path.basename(input_file.name)}"
-        return NamedTemporaryFile(mode='w+', prefix='jf-', suffix=name, delete=False)
+        return NamedTemporaryFile(mode='w+', prefix='jf-', suffix=name,
+                                  delete=del_tmpfile, delete_on_close=False)
     elif input_file is sys.stdin or overview:
         return sys.stdout
     elif overwrite:
@@ -226,6 +238,9 @@ def output(output_fp: IO, text: str, fmt: str):
         output_fp.write(text)
         output_fp.close()
         print_inf(f'result written to {os.path.basename(output_fp.name)}')
+    elif isinstance(output_fp, io.StringIO) and output_fp.tell() != 0:
+        output_fp.write('\n\n')
+        output_fp.write(text)
     else:
         output_fp.write(text)
 
@@ -302,41 +317,51 @@ def main(_args: Optional[Sequence[str]] = None):
     if args.cp2clip and not is_clipboard_available():
         exit_with_error('clipboard is not available')
 
-    # get sets and pops
-    sets = [k.strip() for k in args.set.split(';')] if args.set else []
-    pops = [k.strip() for k in args.pop.split(';')] if args.pop else []
-
     # check the input files
     files = args.files or [sys.stdin]
     n_files = len(files)
     if n_files < 1:
         exit_with_error('no data file specified')
 
-    if (args.diff or args.difftool) and len(files) != 2:
+    # check the diff mode
+    diff_mode: bool = args.diff or args.difftool
+    if diff_mode and len(files) != 2:
         exit_with_error('less than two files')
+    sort_keys = True if diff_mode else args.sort_keys
+    del_tmpfile = False if args.difftool == 'code' else True
+
+    # get sets and pops
+    sets = [k.strip() for k in args.set.split(';')] if args.set else []
+    pops = [k.strip() for k in args.pop.split(';')] if args.pop else []
+
+    output_title = n_files > 1 and not (diff_mode or args.cp2clip or args.overwrite)
 
     diff_files = []
-    for file in files:
+    for idx, file in enumerate(files, start=1):
+        if output_title:
+            title = f'{idx}. {file}' if idx == 1 else f'\n{idx}. {file}'
+            print(f'\033[37m{title}\033[0m')
+
         try:
             # process the input data file
             input_fp = open(file, 'r+') if isinstance(file, str) else file
             formated, fmt = process(input_fp, querypath, args.format,
                                     compact=args.compact, escape=args.escape,
                                     indent=args.indent, overview=args.overview,
-                                    sort_keys=args.sort_keys, sets=sets, pops=pops)
+                                    sort_keys=sort_keys, sets=sets, pops=pops)
             # output the result
-            output_fp = get_output_fp(input_fp, args.cp2clip,
-                                      args.diff or args.difftool,
-                                      args.overview, args.overwrite)
+            output_fp = get_output_fp(input_fp, args.cp2clip, diff_mode,
+                                      args.overview, args.overwrite, del_tmpfile)
+
             output(output_fp, formated, fmt)
             if args.diff or args.difftool:
                 diff_files.append(output_fp)
         except (FormatError, JMESPathError, JSONPathError) as err:
-            print_err(err)
+            exit_with_error(err)
         except FileNotFoundError:
-            print_err(f'no such file: {file}')
+            exit_with_error(f'no such file: {file}')
         except PermissionError:
-            print_err(f'permission denied: {file}')
+            exit_with_error(f'permission denied: {file}')
         except KeyboardInterrupt:
             exit_with_error('user canceled')
 
@@ -349,9 +374,12 @@ def main(_args: Optional[Sequence[str]] = None):
         TEMP_CLIPBOARD.seek(0)
         pyperclip.copy(TEMP_CLIPBOARD.read())
         print_inf('result copied to clipboard')
-    elif args.diff or args.difftool:
-        path1, path2 = [f.name for f in diff_files]
-        compare(path1, path2, args.difftool)
+    elif diff_mode:
+        try:
+            path1, path2 = [f.name for f in diff_files]
+            compare(path1, path2, args.difftool)
+        except (OSError, ValueError) as err:
+            exit_with_error(err)
 
 
 if __name__ == "__main__":

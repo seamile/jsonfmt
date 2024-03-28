@@ -11,12 +11,12 @@ from .utils import print_err
 
 def cmp_by_diff(path1: str, path2: str):
     '''use diff to compare the difference between two files'''
-    stat, result = getstatusoutput(f'diff -h {path1} {path2}')
+    stat, result = getstatusoutput(f'diff -u {path1} {path2}')
     if stat == 0:
+        print_err(result)
+    else:
         output = highlight(result, DiffLexer(), TerminalFormatter())
         print(output)
-    else:
-        print_err(result)
 
 
 def cmp_by_fc(path1: str, path2: str):
@@ -39,40 +39,45 @@ def cmp_by_git(path1: str, path2: str):
         call(['git', 'diff', '--color=always', '--no-index', path1, path2])
 
 
-def cmp_by_others(cmd: str, path1: str, path2: str):
+def cmp_by_others(difftool: str, path1: str, path2: str):
     '''compare the differences between two files by other tools'''
-    call([cmd, path1, path2])
+    if ' ' in difftool:
+        command = difftool.split() + [path1, path2]
+    else:
+        command = [difftool, path1, path2]
+    call(command)
 
 
-def has_command(command) -> bool:
+def has_command(command: str) -> bool:
     '''check if the command is valid'''
+    _cmd = command.split()[0]
     if os.name == 'posix':
-        return os.system(f'hash {command} > /dev/null 2>&1') == 0
+        return os.system(f'hash {_cmd} > /dev/null 2>&1') == 0
     elif os.name == 'nt':
-        return os.system(f'where {command}') == 0
+        return os.system(f'where {_cmd}') == 0
     else:
         raise OSError('unsupported operating system')
 
 
-def compare(path1: str, path2: str, tool: Optional[str] = None):
+def compare(path1: str, path2: str, difftool: Optional[str] = None):
     '''compare the differences between two files'''
-    if tool is None:
+    if difftool is None:
         support_tools = ['git', 'code', 'kdiff3', 'meld', 'vimdiff', 'diff',
-                         'winmergeu', 'fc']
+                         'WinMerge', 'fc']
         # find a difftool available on OS
-        for tool in support_tools:
-            if has_command(tool):
+        for difftool in support_tools:
+            if has_command(difftool):
                 break
         else:
             raise ValueError('not found any available difftool')
 
-    if tool == 'git':
+    if difftool == 'git':
         cmp_by_git(path1, path2)
-    elif tool == 'code':
+    elif difftool == 'code':
         cmp_by_code(path1, path2)
-    elif tool == 'diff':
+    elif difftool == 'diff':
         cmp_by_diff(path1, path2)
-    elif tool == 'fc':
+    elif difftool == 'fc':
         cmp_by_fc(path1, path2)
     else:
-        call([tool, path1, path2])
+        cmp_by_others(difftool, path1, path2)
