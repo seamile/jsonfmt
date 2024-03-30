@@ -270,18 +270,18 @@ def parse_cmdline_args() -> ArgumentParser:
 
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('-C', dest='cp2clip', action='store_true',
-                      help='CopyMode. This will copy the result to clipboard')
+                      help='CopyMode, which will copy the processing result to the clipboard')
     mode.add_argument('-d', dest='diff', action='store_true',
-                      help='DiffMode. This will compare the difference between two data')
+                      help='DiffMode, which compares the difference between the two input data')
     mode.add_argument('-D', dest='difftool', type=str,
-                      help='Similar to DiffMode. You can specify a difftool to compare')
+                      help='DifftoolMode, similar to "DiffMode". You can specify a tool to perform diff comparisons')
     mode.add_argument('-o', dest='overview', action='store_true',
-                      help='OverviewMode. This will show an overview of the data structure')
+                      help='OverviewMode, which can display an overview of the structure of the data')
     mode.add_argument('-O', dest='overwrite', action='store_true',
-                      help='OverwriteMode. This will overwrite the original file with the formated text')
+                      help='OverwriteMode, which will overwrite the original file with the formated text')
 
     parser.add_argument('-c', dest='compact', action='store_true',
-                        help='suppress all whitespace separation')
+                        help='Suppress all whitespace separation (most compact), only valid for JSON')
     parser.add_argument('-e', dest='escape', action='store_true',
                         help='escape non-ASCII characters')
     parser.add_argument('-f', dest='format', choices=['json', 'toml', 'yaml'],
@@ -290,15 +290,15 @@ def parse_cmdline_args() -> ArgumentParser:
                         choices='012345678t', default='2',
                         help='number of spaces for indentation (default: %(default)s)')
     parser.add_argument('-l', dest='querylang', choices=['jmespath', 'jsonpath'],
-                        help='the language for querying (default: auto)')
+                        help='query language for extracting data (default: auto-detect)')
     parser.add_argument('-p', dest='querypath', type=str,
                         help='the path for querying')
     parser.add_argument('-s', dest='sort_keys', action='store_true',
-                        help='sort keys of objects on output')
+                        help='sort the output of dictionaries alphabetically by key')
     parser.add_argument('--set', metavar="'foo.k1=v1;k2[i]=v2'",
-                        help='set the keys to values (seperated by `;`)')
+                        help='key-value pairs to add or modify (seperated by `;`)')
     parser.add_argument('--pop', metavar="'k1;foo.k2;k3[i]'",
-                        help='pop the specified keys (seperated by `;`)')
+                        help='key-value pairs to delete (seperated by `;`)')
     parser.add_argument(dest='files', nargs='*',
                         help='the files that will be processed')
     parser.add_argument('-v', dest='version', action='version',

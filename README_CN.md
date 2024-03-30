@@ -14,9 +14,11 @@
 
 </div>
 
-**_jsonfmt_**（means: JSON Formatter）是一款简单而强大的 JSON 处理工具。
+### <div align="center"><a href="README.md">🇬🇧 English</a> | <a href="README_CN.md">🇨🇳 中文版</a></div>
 
-众所周知，Python 自身已经内置了一个用于格式化 JSON 数据的工具：`python -m json.tool`。但是它的功能过于简单，因此 jsonfmt 在此基础上做了很多实用的扩展：
+**_jsonfmt_**（JSON Formatter）是一款简单而强大的 JSON 处理工具。
+
+众所周知，Python 自身已经内置了一个用于格式化 JSON 数据的工具：`python -m json.tool`。但是它的功能过于简单，因此 **jsonfmt** 在此基础上做了很多实用的扩展：
 
 🎨 它不仅可以用来漂亮的打印 JSON 数据，
 
@@ -24,13 +26,13 @@
 
 🔎 还可以通过 JMESPATH 或 JSONPATH 来提取 JSON 中的内容。
 
-👀 您甚至可以通过 **jsonfmt** 对两个 JSON 或其他格式的数据进行差异对比。
+👀 您甚至可以通过 **jsonfmt** 来比较两个 JSON 或其他格式的数据之间的差异。
 
 
 - [快速上手](#快速上手)
     - [安装](#安装)
     - [用法](#用法)
-- [使用说明](#使用说明)
+- [使用指南](#使用指南)
     - [1. 漂亮地打印 JSON 数据](#1-漂亮地打印-json-数据)
     - [2. 最小化 JSON 数据](#2-最小化-json-数据)
     - [3. 提取 JSON 数据的部分内容](#3-提取-json-数据的部分内容)
@@ -76,20 +78,19 @@ $ pip install jsonfmt
 - `-D DIFFTOOL`: 与“对比模式”类似。你可以指定一个工具来进行差异对比。
 - `-o`: 概览模式，可以显示数据结构的概览，可以用来快速了解较大的数据。
 - `-O`: 覆盖模式，会将处理后的内容覆盖到原文件。
-
 - `-c`: 删除 JSON 中的所有空白字符（对其他数据格式无效）
 - `-e`: 将所有字符转义成 ASCII 码
-- `-f`: 输出格式（默认值：与传入的数据格式相同，可选项：json / toml / yaml）
+- `-f`: 输出格式（默认值：与传入的数据格式相同，可选项：`json` / `toml` / `yaml`）
 - `-i`: 缩进的空格数（默认值：2，范围：0~8，设置 t 时会以 <kbd>Tab</kbd> 作为缩进符）
 - `-l`: 提取数据时的查询语言（默认：自动识别，可选项：jmespath / jsonpath）
 - `-p QUERYPATH`: JMESPath 或 JSONPath 查询路径
-- `-s`: 按照输出对象的键进行排序（仅对 JSON 和 YAML 有效）
+- `-s`: 按键的字母顺序对数据中的字典进行排序
 - `--set 'foo.k1=v1;k2[i]=v2'`: 要添加或修改的键值对（多个值用“;”分隔）
 - `--pop 'k1;foo.k2;k3[i]'`: 通过键指定要删除的键值对（多个值用“;”分隔）
 - `-v`: 显示版本号
 
 
-## 使用说明
+## 使用指南
 
 为了演示 jsonfmt 的功能，我们需要先创建一份测试数据，并将其保存到文件 example.json 中。文件内容如下所示：
 
@@ -166,7 +167,7 @@ $ jf -s -i 4 test/example.json
 
 #### 从管道读取 JSON
 
-如果要处理的数据来自于其他命令的输出，这时只需使用管道 `|` 连接两个命令，从“标准输入”中取即可。
+如果要处理的数据来自于其他命令的输出，这时只需使用管道 `|` 连接两个命令，然后从“标准输入”中取即可。
 
 ```shell
 $ curl -s https://jsonplaceholder.typicode.com/posts/1 | jf -i 4
@@ -186,7 +187,7 @@ $ curl -s https://jsonplaceholder.typicode.com/posts/1 | jf -i 4
 
 ### 2. 最小化 JSON 数据
 
-选项 `-c` 可用于压缩所有空白和换行符，将 JSON 数据紧凑地表示为单行。
+选项 `-c` 可用于删除所有的空白和换行符，将 JSON 数据压缩成单行。
 
 ```shell
 $ echo '{
@@ -202,7 +203,7 @@ $ echo '{
 输出：
 
 ```json
-{"age":21,"items":["pen","phone"],"name":"alex"}
+{"name":"alex","age":21,"items":["pen","phone"]}
 ```
 
 ### 3. 提取 JSON 数据的部分内容
@@ -225,9 +226,9 @@ JMESPath 可以优雅地使用简单的语法从 JSON 数据中提取一部分�
 
     ```json
     {
+        "name": "eat",
         "calorie": 294.9,
-        "date": "2021-03-02",
-        "name": "eat"
+        "date": "2021-03-02"
     }
     ```
 
@@ -266,7 +267,7 @@ JMESPath 可以优雅地使用简单的语法从 JSON 数据中提取一部分�
             "gender",
             "money",
             "actions"
-    ],
+        ],
         "actions_len": 2
     }
     ```
@@ -305,7 +306,7 @@ JSONPath 的设计灵感来源于 XPath。因此它可以像 XPath 那样通过�
 - 通过相对路径过滤所有 `name` 字段:
 
     ```shell
-    # 使用 -l 指定 JSON 的查询语言为 JSONPath
+    # 使用 -l 指定的查询语言为 JSONPath
     $ jf -l jsonpath -p '$..name' test/example.json
     ```
 
@@ -319,9 +320,11 @@ JSONPath 的设计灵感来源于 XPath。因此它可以像 XPath 那样通过�
     ]
     ```
 
+在执行查询时，您可以不指定 `-l` 选项。jsonfmt 会先尝试使用 JMESPath 语法去解析 `-p QUERYPATH`
+
 #### 查询 TOML 和 YAML
 
-**令人惊讶的是**，使用 jsonfmt 您可以用同样的方式处理 TOML 和 YAML，并任意转换结果格式。甚至可以在单个命令中同时处理这三种格式。
+jsonfmt 的众多强大功能之一就是，您可以使用与 JSON 完全同样的方式来处理 TOML 和 YAML，并任意转换结果的格式。甚至可以在单个命令中同时处理这三种格式。
 
 - 从 toml 文件读取数据，并以 YAML 格式输出
 
@@ -454,11 +457,17 @@ $ jf test/example.yaml -f json
 
 ### 5. 差异对比
 
-在开发中，我们经常需要对某些数据或者配置进行差异对比。比如某个 API 在传入不同参数时返回结果的差异，或者运维人员需要对某个系统不同格式的配置文件做差异对比。
+在开发中，我们经常需要对一些数据或者配置进行差异对比。比如对比某个 API 在传入不同参数时的返回结果，或者运维人员对比某个系统不同格式的配置文件之间的差异。
 
-jsonfmt 支持多种差异对比工具，如：`diff`、`vimdiff`、`git`、`code`、`kdiff3`、`meld`，也支持 Windows 上的 `WinMerge` 和 `fc`。
+jsonfmt 默认支持多种差异对比工具，如：`diff`、`vimdiff`、`git`、`code`、`kdiff3`、`meld`，也支持 Windows 上的 `WinMerge` 和 `fc`，还可以通过 `-D` 选项来支持其他工具。
 
-默认情况下，jsonfmt 会首先检查电脑上是否安装了 git，并调用 `git config --global diff.tool` 读取其配置的 difftool。如果未设置该项则使用 git 默认的差异对比工具进行处理。如果电脑上没有安装 git，则会按照 `code`、`kdiff3`、`meld`、`vimdiff`、`diff`、`WinMerge`、`fc` 的顺序进行查找。如果未找到可用的差异对比工具会报错退出。
+默认情况下，jsonfmt 会首先检查电脑上是否安装了 git。如果 git 可用，jsonfmt 会调用 `git config --global diff.tool` 读取其配置的对比工具。如果未设置该项则使用 git 默认的差异对比工具进行处理。如果电脑上没有安装 git，则会按照 `code`、`kdiff3`、`meld`、`vimdiff`、`diff`、`WinMerge`、`fc` 的顺序进行查找。如果没有找到可用的差异对比工具，jsonfmt 会报错退出。
+
+在差异对比模式下，jsonfmt 会先将需要对比的数据进行格式化处理（此时 `-s` 选项会被自动激活），并将结果保存到临时文件中，然后再调用指定的工具进行差异对比。
+
+对比结束后，这个临时文件会被自动删除。如果选择 VS Code 作为差异对比工具，那么这个的临时文件不会被立即删除，它会由操作系统在执行清理操作时删除。
+
+#### 例1. 对比两个 JSON 文件
 
 ```shell
 $ jf -d test/todo1.json test/todo2.json
@@ -471,17 +480,38 @@ $ jf -d test/todo1.json test/todo2.json
 +++ /tmp/.../jf-vik3bqsu_todo2.json     2024-03-23 18:22:00
 @@ -1,6 +1,6 @@
  {
--  "id": 1,
 -  "userId": 1072,
+-  "id": 1,
 -  "title": "delectus aut autem",
 +  "userId": 1092,
-+  "id": 9,
++  "id": 2,
 +  "title": "molestiae perspiciatis ipsa",
    "completed": false
  }
 ```
 
-您也可以使用 `-D DIFFTOOL` 选项来指定一个工具来进行差异对比。对于前面没有提到的工具，只要其命令格式为 `cmd file1 file2` 就可以使用 `-D` 选项来指定。如果指定的差异对比工具需要特殊参数，可以使用 `-D 'DIFFTOOL OPTIONS'` 来操作。
+#### 例2. 通过 `-D` 选定对比工具
+
+`-D DIFFTOOL` 选项可以指定一款差异对比工具。只要其命令格式满足 `command [options] file1 file2` 即可，无论它是否在 jsonfmt 默认支持的工具列表中。
+
+```shell
+$ jf -D sdiff test/todo1.json test/todo2.json
+```
+
+输出：
+
+```
+{                                        {
+  "userId": 1072,                   |      "userId": 1092,
+  "id": 1,                          |      "id": 2,
+  "title": "delectus aut autem",    |      "title": "molestiae perspiciatis ipsa",
+  "completed": false                       "completed": false
+}                                        }
+```
+
+#### 例3. 为选定的工具指定参数
+
+如果需要向差异对比工具传递参数，可以使用 `-D 'DIFFTOOL OPTIONS'` 来操作。
 
 ```shell
 $ jf -D 'diff --ignore-case --color=always' test/todo1.json test/todo2.json
@@ -490,20 +520,22 @@ $ jf -D 'diff --ignore-case --color=always' test/todo1.json test/todo2.json
 输出：
 
 ```diff
-2,4c2,4
+3,5c3,5
 <   "id": 1,
-<   "userId": 1072,
 <   "title": "delectus aut autem",
+<   "userId": 1072
 ---
->   "userId": 1092,
->   "id": 9,
+>   "id": 2,
 >   "title": "molestiae perspiciatis ipsa",
+>   "userId": 1092
 ```
 
-对于不同来源的数据，其格式、缩进，以及键的顺序可能都不一样，这时可以使用 `-s`、`-i`、`-f` 配合来进行差异对比。
+#### 例4. 对比不同格式的数据
+
+对于不同来源的数据，其格式、缩进，以及键的顺序可能都不一样，这时可以使用 `-i`、`-f` 配合来进行差异对比。
 
 ```shell
-$ jf -d -s -f toml test/todo1.json test/todo3.toml
+$ jf -d -i 4 -f toml test/todo1.json test/todo3.toml
 ```
 
 输出：
@@ -512,16 +544,14 @@ $ jf -d -s -f toml test/todo1.json test/todo3.toml
 --- /var/.../jf-qw9vm33n_todo1.json     2024-03-23 18:29:17
 +++ /var/.../jf-dqb_fl4x_todo3.toml     2024-03-23 18:29:17
 @@ -1,4 +1,4 @@
+ completed = false
 -id = 1
--userId = 1072
 -title = "delectus aut autem"
-+userId = 1
 +id = 3
 +title = "fugiat veniam minus"
- completed = false
+ userId = 1072
 ```
 
-在差异对比模式下，jsonfmt 会先将需要对比的数据进行格式化处理，并将它们写入到临时文件，然后再调用指定的工具进行差异对比。对比结束后，这个临时文件会被自动删除。如果选择 VS Code 作为差异对比工具，那么产生的临时文件不会被立即删除，它会由操作系统在执行清理操作时删除。
 
 ### 6. 方便的处理大型 JSON 数据
 
@@ -549,17 +579,17 @@ $ jf -d -s -f toml test/todo1.json test/todo3.toml
 | <kbd>/</kbd>                                  | 搜索模式     |
 | <kbd>q</kbd>                                  | 退出分页模式 |
 
-这里有一个来自 GitHub 的大型 JSON，您可以将此命令粘贴到终端以尝试分页模式:
+下面这个 API 的返回值是一个大型 JSON 数据，您可以将此命令粘贴到终端以尝试分页模式:
 
 ```shell
-curl -s https://jsonplaceholder.typicode.com/users | jf
+$ curl -s https://jsonplaceholder.typicode.com/users | jf
 ```
 
 #### 显示大型 JSON 数据的概览
 
 有时我们只想看到 JSON 数据的概览而不关心具体细节，这时可以使用 `-o` 选项。
 
-它将清除 JSON 中的子列表，并将字符串修改为 `...` 以显示概览。
+它将清除 JSON 中的子列表，并将字符串修改为 `"..."` 以显示概览。
 
 如果 JSON 数据的根节点是一个列表，概览中仅保留它的第一个子元素。
 
@@ -581,9 +611,7 @@ $ jf -o test/test.json
 
 #### 将处理结果复制到剪贴板
 
-如果您想将处理后的结果粘贴到文件中，但终端中打印的内容超过了一页时，复制起来会比较困难。
-
-此时，您可以通过 `-C` 选项，将结果自动复制到剪贴板。
+如果您想将处理后的结果粘贴到文件中，但终端中打印的内容超过了一页时，复制起来会比较困难。此时，您可以通过 `-C` 选项，将结果自动复制到剪贴板。
 
 ```shell
 $ jf -C test/example.json
@@ -600,7 +628,7 @@ $ jf -C test/example.json
 
 当您需要更改输入文档中的某些内容时，请使用 `--set` 和 `--pop` 选项。
 
-格式为 `--set 'key=value'`。如果需要修改多个值，可以使用 `;` 分隔:`--set 'k1=v1;k2=v2'`。如果键值对不存在，则会被添加。
+格式为 `--set 'key=value'`。如果需要修改多个值，可以使用 `;` 分隔：`--set 'k1=v1;k2=v2'`。如果键值对不存在，则会被添加。
 
 对于列表中的项目，请使用 `key[i]` 或 `key.i` 指定。如果索引大于或等于元素个数,则值将被追加。
 
@@ -692,7 +720,7 @@ $ jf --pop 'gender; actions[1]' test/example.json
 }
 ```
 
-当然，您也可以同时使用 `--set` 和 `--pop`。
+当然，您也可以同时使用 `--set` 和 `--pop`：
 
 ```shell
 jf --set 'skills=["Django","Flask"];money=1000' --pop 'gender;actions[1]' test/example.json
