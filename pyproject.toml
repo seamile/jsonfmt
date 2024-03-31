@@ -33,9 +33,12 @@ homepage = "https://github.com/seamile/jsonfmt"
 repository = "https://github.com/seamile/jsonfmt"
 documentation = "https://seamile.github.io/jsonfmt/"
 
+[project.scripts]
+jf = "jsonfmt.jsonfmt:main"
+
+[tool.setuptools]
+packages = ["jsonfmt"]
+
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
 version = { attr = "jsonfmt.__version__" }
-
-[project.scripts]
-jsonfmt = "jsonfmt.jsonfmt:main"

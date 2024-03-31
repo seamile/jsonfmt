@@ -1,36 +1,38 @@
 #!/usr/bin/env python
 '''JSON Formatter'''
 
+import io
 import json
-from argparse import ArgumentParser, Namespace
+import os
+import sys
+from argparse import ArgumentParser
+from collections import OrderedDict
 from functools import partial
-from io import TextIOBase
 from pydoc import pager
 from shutil import get_terminal_size
-from signal import SIGINT, signal
-from sys import exit as sys_exit
-from sys import stdin, stdout
-from typing import IO, Any, List, Optional, Sequence, Tuple, Union
+from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
+from typing import IO, Any, Callable, List, Optional, Sequence, Tuple, Union
 from unittest.mock import patch
 
 import pyperclip
 import toml
 import yaml
-from jmespath import compile as jcompile
+from jmespath import compile as parse_jmespath
 from jmespath.exceptions import JMESPathError
 from jmespath.parser import ParsedResult as JMESPath
 from jsonpath_ng import JSONPath
-from jsonpath_ng import parse as jparse
+from jsonpath_ng import parse as parse_jsonpath
 from jsonpath_ng.exceptions import JSONPathError
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
 
-from .utils import load_value, print_err, print_inf
-
-__version__ = '0.2.7'
+from . import __version__
+from .diff import compare
+from .utils import exit_with_error, load_value, print_err, print_inf
 
 QueryPath = Union[JMESPath, JSONPath]
+TEMP_CLIPBOARD = io.StringIO()
 
 
 class FormatError(Exception):
@@ -42,6 +44,26 @@ def is_clipboard_available() -> bool:
     copy_fn, paste_fn = pyperclip.determine_clipboard()
     return copy_fn.__class__.__name__ != 'ClipboardUnavailable' \
         and paste_fn.__class__.__name__ != 'ClipboardUnavailable'
+
+
+def parse_querypath(querypath: Optional[str], querylang: Optional[str]):
+    '''parse the querypath'''
+    if querypath is None:
+        return None
+    elif querylang is None:
+        parsers = [parse_jmespath, parse_jsonpath]
+    elif querylang in ['jmespath', 'jsonpath']:
+        parsers = [{'jmespath': parse_jmespath, 'jsonpath': parse_jsonpath}[querylang]]
+    else:
+        exit_with_error(f'invalid querylang: "{querylang}"')
+
+    for parse in parsers:
+        try:
+            return parse(querypath)
+        except (JMESPathError, JSONPathError, AttributeError):
+            pass
+
+    exit_with_error(f'invalid querypath expression: "{querypath}"')
 
 
 def extract_elements(qpath: QueryPath, py_obj: Any) -> Any:
@@ -62,7 +84,7 @@ def extract_elements(qpath: QueryPath, py_obj: Any) -> Any:
 def parse_to_pyobj(text: str, qpath: Optional[QueryPath]) -> Tuple[Any, str]:
     '''read json, toml or yaml from IO and then match sub-element by jmespath'''
     # parse json, toml or yaml to python object
-    loads_methods = {
+    loads_methods: dict[str, Callable] = {
         'json': json.loads,
         'toml': toml.loads,
         'yaml': partial(yaml.load, Loader=yaml.Loader),
@@ -100,6 +122,17 @@ def traverse_to_bottom(py_obj: Any, keys: str) -> Tuple[Any, Union[str, int]]:
     return py_obj, key_or_idx(py_obj, _keys[-1])
 
 
+def sort_dict(py_obj: Any) -> Any:
+    '''sort the dicts in py_obj by keys'''
+    if isinstance(py_obj, dict):
+        sorted_items = sorted((key, sort_dict(value)) for key, value in py_obj.items())
+        return OrderedDict(sorted_items)
+    elif isinstance(py_obj, list):
+        return [sort_dict(item) for item in py_obj]
+    else:
+        return py_obj
+
+
 def modify_pyobj(py_obj: Any, sets: List[str], pops: List[str]):
     '''add, modify or pop items for PyObj'''
     for kv in sets:
@@ -124,6 +157,7 @@ def modify_pyobj(py_obj: Any, sets: List[str], pops: List[str]):
 
 
 def get_overview(py_obj: Any) -> Any:
+    '''extract the structure of the data'''
     def clip(value: Any) -> Any:
         if isinstance(value, str):
             return '...'
@@ -142,63 +176,79 @@ def get_overview(py_obj: Any) -> Any:
 
 def format_to_text(py_obj: Any, fmt: str, *,
                    compact: bool, escape: bool,
-                   indent: Union[int, str], sort_keys: bool) -> str:
+                   indent: str, sort_keys: bool) -> str:
     '''format the py_obj to text'''
     if fmt == 'json':
         if compact:
-            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
-                              separators=(',', ':')) + '\n'
+            result = json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
+                                separators=(',', ':'))
         else:
-            return json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
-                              indent=indent) + '\n'
-
+            result = json.dumps(py_obj, ensure_ascii=escape, sort_keys=sort_keys,
+                                indent='\t' if indent == 't' else int(indent))
     elif fmt == 'toml':
         if not isinstance(py_obj, dict):
             msg = 'the pyobj must be a Mapping when format to toml'
             raise FormatError(msg)
-        return toml.dumps(py_obj)
-
+        result = toml.dumps(sort_dict(py_obj) if sort_keys else py_obj)
     elif fmt == 'yaml':
-        _indent = None if indent == '\t' else int(indent)
-        return yaml.safe_dump(py_obj, allow_unicode=not escape, indent=_indent,
-                              sort_keys=sort_keys)
-
+        _indent = None if indent == 't' else int(indent)
+        result = yaml.safe_dump(py_obj, allow_unicode=not escape, indent=_indent,
+                                sort_keys=sort_keys)
     else:
         raise FormatError('Unknow format')
 
+    return result.strip() + '\n'
 
-def output(output_fp: IO, text: str, fmt: str, cp2clip: bool):
-    # copy the result to clipboard
+
+def get_output_fp(input_file: IO, cp2clip: bool, diff: bool,
+                  overview: bool, overwrite: bool, del_tmpfile=True) -> IO:
     if cp2clip:
-        pyperclip.copy(text)
-        print_inf('result copied to clipboard')
-        return
-    elif output_fp.isatty():
-        # highlight the text when output to TTY divice
-        Lexer = {'json': JsonLexer, 'toml': TOMLLexer, 'yaml': YamlLexer}[fmt]
-        colored_text = highlight(text, Lexer(), TerminalFormatter())
-        win_w, win_h = get_terminal_size()
-        # use pager when line-hight > screen hight or
-        if text.count('\n') >= win_h or len(text) > win_w * (win_h - 1):
-            with patch("sys.stdin.isatty", lambda *_: True):
-                pager(colored_text)
-        else:
-            output_fp.write(colored_text)
+        return TEMP_CLIPBOARD
+    elif diff:
+        name = f"_{os.path.basename(input_file.name)}"
+        return NamedTemporaryFile(mode='w+', prefix='jf-', suffix=name,
+                                  delete=del_tmpfile, delete_on_close=False)
+    elif input_file is sys.stdin or overview:
+        return sys.stdout
+    elif overwrite:
+        return input_file
     else:
-        if output_fp.fileno() > 2:
-            output_fp.seek(0)
-            output_fp.truncate()
+        return sys.stdout
 
+
+def output(output_fp: IO, text: str, fmt: str):
+    if hasattr(output_fp, 'name') and output_fp.name == '<stdout>':
+        if output_fp.isatty():
+            # highlight the text when output to TTY divice
+            Lexer = {'json': JsonLexer, 'toml': TOMLLexer, 'yaml': YamlLexer}[fmt]
+            colored_text = highlight(text, Lexer(), TerminalFormatter())
+            win_w, win_h = get_terminal_size()
+            # use pager when line-hight > screen hight or
+            if text.count('\n') >= win_h or len(text) > win_w * (win_h - 1):
+                with patch("sys.stdin.isatty", lambda *_: True):
+                    pager(colored_text)
+            else:
+                output_fp.write(colored_text)
+        else:
+            output_fp.write(text)
+    elif isinstance(output_fp, (io.TextIOWrapper, _TemporaryFileWrapper)):
+        # For regular files, changes the position to the beginning
+        # and truncates the file to zero length before overwriting
+        output_fp.seek(0)
+        output_fp.truncate()
+        output_fp.write(text)
+        output_fp.close()
+        print_inf(f'result written to {os.path.basename(output_fp.name)}')
+    elif isinstance(output_fp, io.StringIO) and output_fp.tell() != 0:
+        output_fp.write('\n\n')
+        output_fp.write(text)
+    else:
         output_fp.write(text)
 
-        if output_fp.fileno() > 2:
-            print_inf(f'result written to {output_fp.name}')
 
-
-def process(input_fp: IO, qpath: Optional[QueryPath], to_fmt: Optional[str],
-            *, compact: bool, cp2clip: bool, escape: bool, indent: Union[int, str],
-            overview: bool, overwrite: bool, sort_keys: bool,
-            sets: Optional[list], pops: Optional[list]):
+def process(input_fp: IO, qpath: Optional[QueryPath], to_fmt: Optional[str], *,
+            compact: bool, escape: bool, indent: str, overview: bool,
+            sort_keys: bool, sets: Optional[list], pops: Optional[list]):
     # parse and format
     input_text = input_fp.read()
     py_obj, fmt = parse_to_pyobj(input_text, qpath)
@@ -213,119 +263,124 @@ def process(input_fp: IO, qpath: Optional[QueryPath], to_fmt: Optional[str],
     formated_text = format_to_text(py_obj, to_fmt,
                                    compact=compact, escape=escape,
                                    indent=indent, sort_keys=sort_keys)
-
-    # output the result
-    if input_fp.name == '<stdin>' or not overwrite:
-        output_fp = stdout
-    else:
-        # truncate file to zero length before overwrite
-        output_fp = input_fp
-    output(output_fp, formated_text, to_fmt, cp2clip)
+    return formated_text, to_fmt
 
 
-def parse_cmdline_args(args: Optional[Sequence[str]] = None) -> Namespace:
+def parse_cmdline_args() -> ArgumentParser:
     parser = ArgumentParser('jsonfmt')
+
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('-C', dest='cp2clip', action='store_true',
+                      help='CopyMode, which will copy the processing result to the clipboard')
+    mode.add_argument('-d', dest='diff', action='store_true',
+                      help='DiffMode, which compares the difference between the two input data')
+    mode.add_argument('-D', dest='difftool', type=str,
+                      help='DifftoolMode, similar to "DiffMode". You can specify a tool to perform diff comparisons')
+    mode.add_argument('-o', dest='overview', action='store_true',
+                      help='OverviewMode, which can display an overview of the structure of the data')
+    mode.add_argument('-O', dest='overwrite', action='store_true',
+                      help='OverwriteMode, which will overwrite the original file with the formated text')
+
     parser.add_argument('-c', dest='compact', action='store_true',
-                        help='suppress all whitespace separation')
-    parser.add_argument('-C', dest='cp2clip', action='store_true',
-                        help='copy the result to clipboard')
+                        help='Suppress all whitespace separation (most compact), only valid for JSON')
     parser.add_argument('-e', dest='escape', action='store_true',
                         help='escape non-ASCII characters')
     parser.add_argument('-f', dest='format', choices=['json', 'toml', 'yaml'],
                         help='the format to output (default: same as input)')
-    parser.add_argument('-i', dest='indent', metavar='{0-8,t}',
+    parser.add_argument('-i', dest='indent', metavar='{0-8 or t}',
                         choices='012345678t', default='2',
                         help='number of spaces for indentation (default: %(default)s)')
-    parser.add_argument('-o', dest='overview', action='store_true',
-                        help='show data structure overview')
-    parser.add_argument('-O', dest='overwrite', action='store_true',
-                        help='overwrite the formated text to original file')
-    parser.add_argument('-l', dest='querylang', default='jmespath',
-                        choices=['jmespath', 'jsonpath'],
-                        help='the language for querying (default: %(default)s)')
+    parser.add_argument('-l', dest='querylang', choices=['jmespath', 'jsonpath'],
+                        help='query language for extracting data (default: auto-detect)')
     parser.add_argument('-p', dest='querypath', type=str,
                         help='the path for querying')
     parser.add_argument('-s', dest='sort_keys', action='store_true',
-                        help='sort keys of objects on output')
+                        help='sort the output of dictionaries alphabetically by key')
     parser.add_argument('--set', metavar="'foo.k1=v1;k2[i]=v2'",
-                        help='set the keys to values (seperated by `;`)')
+                        help='key-value pairs to add or modify (seperated by `;`)')
     parser.add_argument('--pop', metavar="'k1;foo.k2;k3[i]'",
-                        help='pop the specified keys (seperated by `;`)')
+                        help='key-value pairs to delete (seperated by `;`)')
     parser.add_argument(dest='files', nargs='*',
                         help='the files that will be processed')
     parser.add_argument('-v', dest='version', action='version',
                         version=__version__, help="show the version")
-    return parser.parse_args(args)
+    return parser
 
 
-def handle_interrupt(signum, _):
-    print_err('user canceled!')
-    sys_exit(0)
+def main(_args: Optional[Sequence[str]] = None):
+    parser = parse_cmdline_args()
+    args = parser.parse_args(_args)
 
-
-signal(SIGINT, handle_interrupt)
-
-
-def main():
-    args = parse_cmdline_args()
-
-    if args.querypath is None:
-        querypath = None
-    else:
-        parse_path = {'jmespath': jcompile, 'jsonpath': jparse}[args.querylang]
-        try:
-            querypath = parse_path(args.querypath)
-        except (JMESPathError, JSONPathError, AttributeError):
-            print_err(f'invalid querypath expression: "{args.querypath}"')
-            sys_exit(1)
+    # check and parse the querypath
+    querypath = parse_querypath(args.querypath, args.querylang)
 
     # check if the clipboard is available
-    cp2clip = args.cp2clip and is_clipboard_available()
-    if args.cp2clip and not cp2clip:
-        print_err('clipboard unavailable')
+    if args.cp2clip and not is_clipboard_available():
+        exit_with_error('clipboard is not available')
 
-    # check the indent
-    indent = '\t' if args.indent == 't' else int(args.indent)
+    # check the input files
+    files = args.files or [sys.stdin]
+    n_files = len(files)
+    if n_files < 1:
+        exit_with_error('no data file specified')
 
-    # the overwrite will be forced to close when showing overview
-    overwrite = False if args.overview else args.overwrite
+    # check the diff mode
+    diff_mode: bool = args.diff or args.difftool
+    if diff_mode and len(files) != 2:
+        exit_with_error('less than two files')
+    sort_keys = True if diff_mode else args.sort_keys
+    del_tmpfile = False if args.difftool == 'code' else True
 
     # get sets and pops
     sets = [k.strip() for k in args.set.split(';')] if args.set else []
     pops = [k.strip() for k in args.pop.split(';')] if args.pop else []
 
-    files = args.files or [stdin]
-    files_cnt = len(files)
+    output_title = n_files > 1 and not (diff_mode or args.cp2clip or args.overwrite)
 
-    for num, file in enumerate(files, start=1):
+    diff_files = []
+    for idx, file in enumerate(files, start=1):
+        if output_title:
+            title = f'{idx}. {file}' if idx == 1 else f'\n{idx}. {file}'
+            print(f'\033[37m{title}\033[0m')
+
         try:
-            # read from file
+            # process the input data file
             input_fp = open(file, 'r+') if isinstance(file, str) else file
-            process(input_fp,
-                    querypath,
-                    args.format,
-                    compact=args.compact,
-                    cp2clip=cp2clip,
-                    escape=args.escape,
-                    indent=indent,
-                    overview=args.overview,
-                    overwrite=overwrite,
-                    sort_keys=args.sort_keys,
-                    sets=sets,
-                    pops=pops)
-            # output a line to separate multiple results
-            if num < files_cnt:
-                print('----------------', file=stdout)
+            formated, fmt = process(input_fp, querypath, args.format,
+                                    compact=args.compact, escape=args.escape,
+                                    indent=args.indent, overview=args.overview,
+                                    sort_keys=sort_keys, sets=sets, pops=pops)
+            # output the result
+            output_fp = get_output_fp(input_fp, args.cp2clip, diff_mode,
+                                      args.overview, args.overwrite, del_tmpfile)
+
+            output(output_fp, formated, fmt)
+            if args.diff or args.difftool:
+                diff_files.append(output_fp)
         except (FormatError, JMESPathError, JSONPathError) as err:
-            print_err(err)
+            exit_with_error(err)
         except FileNotFoundError:
-            print_err(f'no such file: {file}')
+            exit_with_error(f'no such file: {file}')
         except PermissionError:
-            print_err(f'permission denied: {file}')
+            exit_with_error(f'permission denied: {file}')
+        except KeyboardInterrupt:
+            exit_with_error('user canceled')
+
         finally:
             input_fp = locals().get('input_fp')
-            if isinstance(input_fp, TextIOBase):
+            if isinstance(input_fp, io.TextIOBase):
                 input_fp.close()
+
+    if args.cp2clip:
+        TEMP_CLIPBOARD.seek(0)
+        pyperclip.copy(TEMP_CLIPBOARD.read())
+        print_inf('result copied to clipboard')
+    elif diff_mode:
+        try:
+            path1, path2 = [f.name for f in diff_files]
+            compare(path1, path2, args.difftool)
+        except (OSError, ValueError) as err:
+            exit_with_error(err)
 
 
 if __name__ == "__main__":

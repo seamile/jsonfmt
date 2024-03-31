@@ -1,1 +1,1 @@
-{"actions":[{"calorie":294.9,"date":"2021-03-02","name":"eat"},{"calorie":-375,"date":"2023-04-27","name":"sport"}],"age":23,"gender":"纯爷们","money":3.1415926,"name":"Bob"}
+{"name":"Bob","age":23,"gender":"纯爷们","money":3.1415926,"actions":[{"name":"eat","calorie":294.9,"date":"2021-03-02"},{"name":"sport","calorie":-375,"date":"2023-04-27"}]}
