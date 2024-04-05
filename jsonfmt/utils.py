@@ -1,21 +1,14 @@
-import re
 import sys
-from typing import Any
+from ast import literal_eval
 from collections import OrderedDict
-
-NUMERIC = re.compile(r'-?\d+$|-?\d+\.\d+$|^-?\d+\.?\d+e-?\d+$')
-DICT_OR_LIST = re.compile(r'^\{.*\}$|^\[.*\]$')
+from typing import Any
 
 
-def load_value(value: str) -> Any:
-    if NUMERIC.match(value):
-        return eval(value)
-    elif DICT_OR_LIST.match(value):
-        try:
-            return eval(value)
-        except Exception:
-            return value
-    else:
+def safe_eval(value: str) -> Any:
+    '''Safely evaluates the provided string expression as a Python literal'''
+    try:
+        return literal_eval(value)
+    except (ValueError, SyntaxError):
         return value
 
 

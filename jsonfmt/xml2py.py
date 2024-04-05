@@ -5,7 +5,7 @@ from copy import deepcopy
 from typing import Any, Optional, Self
 from xml.dom.minidom import parseString
 
-from .utils import load_value, sort_dict
+from .utils import safe_eval, sort_dict
 
 RESERVED_CHARS = re.compile(r'[<>&"\']')
 
@@ -77,27 +77,27 @@ class Element(ET.Element):
         self.append(child)
         return child
 
-    def _get_attrs(self):
-        attrs = {f'@{k}': load_value(v) for k, v in self.attrib.items()}
+    def _get_attrs(self) -> Optional[dict[str, Any]]:
+        attrs = {f'@{k}': safe_eval(v) for k, v in self.attrib.items()}
 
         if len(self) == 0:
             if not self.text:
                 return attrs or None
             else:
-                value = load_value(self.text.strip())
+                value = safe_eval(self.text.strip())
                 if attrs and value:
                     attrs['@text'] = value
                 return attrs or value
         else:
-            for child in self:
+            for n, child in enumerate(self, start=1):
                 child_attrs = child._get_attrs()  # type: ignore
                 if child.tag in attrs:
                     # Make a list for duplicate tags
                     previous = attrs[child.tag]
-                    if isinstance(previous, list):
-                        previous.append(child_attrs)
-                    else:
+                    if n == 2:
                         attrs[child.tag] = [previous, child_attrs]
+                    else:
+                        previous.append(child_attrs)
                 else:
                     attrs[child.tag] = child_attrs
             return attrs
