@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<personnel>
+  <employee id="e1">
+    <name first="John" last="Doe"/>
+    <department>HR</department>
+    <salary currency="USD">50000</salary>
+  </employee>
+  <employee id="e2">
+    <name first="Jane" last="Smith"/>
+    <department>Tech</department>
+    <salary currency="EUR">60000</salary>
+  </employee>
+</personnel>

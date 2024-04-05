@@ -24,9 +24,9 @@ from jsonpath_ng import parse as parse_jsonpath
 from jsonpath_ng.exceptions import JSONPathError
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
-from pygments.lexers import JsonLexer, TOMLLexer, YamlLexer
+from pygments.lexers import JsonLexer, TOMLLexer, XmlLexer, YamlLexer
 
-from . import __version__, utils
+from . import __version__, utils, xml2py
 from .diff import compare
 
 QueryPath = Union[JMESPath, JSONPath]
@@ -85,6 +85,7 @@ def parse_to_pyobj(text: str, qpath: Optional[QueryPath]) -> Tuple[Any, str]:
     loads_methods: dict[str, Callable] = {
         'json': json.loads,
         'toml': toml.loads,
+        'xml': xml2py.loads,
         'yaml': partial(yaml.load, Loader=yaml.Loader),
     }
 
@@ -178,7 +179,7 @@ def format_to_text(py_obj: Any, fmt: str, *,
             raise FormatError(msg)
         result = toml.dumps(utils.sort_dict(py_obj) if sort_keys else py_obj)
     elif fmt == 'xml':
-        result = ''
+        result = xml2py.dumps(py_obj, indent, compact, sort_keys)
     elif fmt == 'yaml':
         _indent = None if indent == 't' else int(indent)
         result = yaml.safe_dump(py_obj, allow_unicode=not escape, indent=_indent,
@@ -209,7 +210,8 @@ def output(output_fp: IO, text: str, fmt: str):
     if hasattr(output_fp, 'name') and output_fp.name == '<stdout>':
         if output_fp.isatty():
             # highlight the text when output to TTY divice
-            Lexer = {'json': JsonLexer, 'toml': TOMLLexer, 'yaml': YamlLexer}[fmt]
+            Lexer = {'json': JsonLexer, 'toml': TOMLLexer,
+                     'xml': XmlLexer, 'yaml': YamlLexer}[fmt]
             colored_text = highlight(text, Lexer(), TerminalFormatter())
             win_w, win_h = get_terminal_size()
             # use pager when line-hight > screen hight or
@@ -274,7 +276,7 @@ def parse_cmdline_args() -> ArgumentParser:
                         help='Suppress all whitespace separation (most compact), only valid for JSON')
     parser.add_argument('-e', dest='escape', action='store_true',
                         help='escape non-ASCII characters')
-    parser.add_argument('-f', dest='format', choices=['json', 'toml', 'yaml'],
+    parser.add_argument('-f', dest='format', choices=['json', 'toml', 'xml', 'yaml'],
                         help='the format to output (default: same as input)')
     parser.add_argument('-i', dest='indent', metavar='{0-8 or t}',
                         choices='012345678t', default='2',
@@ -347,7 +349,7 @@ def main(_args: Optional[Sequence[str]] = None):
             if diff_mode:
                 diff_files.append(output_fp.name)
         except (FormatError, JMESPathError, JSONPathError, OSError) as err:
-            utils.exit_with_error(err)
+            utils.print_err(err)
         except KeyboardInterrupt:
             utils.exit_with_error('user canceled')
         finally:
