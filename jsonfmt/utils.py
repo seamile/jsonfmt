@@ -1,6 +1,7 @@
 import re
 import sys
 from typing import Any
+from collections import OrderedDict
 
 NUMERIC = re.compile(r'-?\d+$|-?\d+\.\d+$|^-?\d+\.?\d+e-?\d+$')
 DICT_OR_LIST = re.compile(r'^\{.*\}$|^\[.*\]$')
@@ -16,6 +17,17 @@ def load_value(value: str) -> Any:
             return value
     else:
         return value
+
+
+def sort_dict(py_obj: Any) -> Any:
+    '''sort the dicts in py_obj by keys'''
+    if isinstance(py_obj, dict):
+        sorted_items = sorted((key, sort_dict(value)) for key, value in py_obj.items())
+        return OrderedDict(sorted_items)
+    elif isinstance(py_obj, list):
+        return [sort_dict(item) for item in py_obj]
+    else:
+        return py_obj
 
 
 def print_inf(msg: Any):
