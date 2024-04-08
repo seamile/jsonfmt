@@ -4,11 +4,15 @@ gender = "纯爷们"
 money = 3.1415926
 [[actions]]
 name = "eat"
-calorie = 294.9
+calorie = 1294.9
 date = "2021-03-02"
 
 [[actions]]
 name = "sport"
-calorie = -375
+calorie = -2375
 date = "2023-04-27"
 
+[[actions]]
+name = "sleep"
+calorie = -420.5
+date = "2023-05-15"

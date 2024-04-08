@@ -1,4 +1,3 @@
-import re
 import xml.etree.ElementTree as ET
 from collections.abc import Mapping
 from copy import deepcopy
@@ -7,10 +6,12 @@ from xml.dom.minidom import parseString
 
 from .utils import safe_eval, sort_dict
 
-RESERVED_CHARS = re.compile(r'[<>&"\']')
+
+class _list(list):
+    pass
 
 
-class Element(ET.Element):
+class XmlElement(ET.Element):
     def __init__(self,
                  tag: str,
                  attrib={},
@@ -37,16 +38,20 @@ class Element(ET.Element):
         return cls(tag, attrib, text, tail)
 
     @classmethod
-    def from_xml(cls, xml: str) -> Self:
-        def clone(src: ET.Element, dst: Self):
-            for child in src:
-                _child = dst.spawn(child.tag, child.attrib, child.text, child.tail)
-                clone(child, _child)
+    def clone(cls, src: Self | ET.Element, dst: Optional[Self] = None) -> Self:
+        if dst is None:
+            dst = cls(src.tag, src.attrib, src.text, src.tail)
 
+        for child in src:
+            _child = dst.spawn(child.tag, child.attrib, child.text, child.tail)
+            cls.clone(child, _child)
+
+        return dst
+
+    @classmethod
+    def from_xml(cls, xml: str) -> Self:
         root = ET.fromstring(xml.strip())
-        ele = cls(root.tag, root.attrib, root.text, root.tail)
-        clone(root, ele)
-        return ele
+        return cls.clone(root)
 
     def to_xml(self,
                minimal: Optional[bool] = None,
@@ -89,13 +94,13 @@ class Element(ET.Element):
                     attrs['@text'] = value
                 return attrs or value
         else:
-            for n, child in enumerate(self, start=1):
+            for child in self:
                 child_attrs = child._get_attrs()  # type: ignore
                 if child.tag in attrs:
                     # Make a list for duplicate tags
                     previous = attrs[child.tag]
-                    if n == 2:
-                        attrs[child.tag] = [previous, child_attrs]
+                    if not isinstance(previous, _list):
+                        attrs[child.tag] = _list([previous, child_attrs])
                     else:
                         previous.append(child_attrs)
                 else:
@@ -114,42 +119,46 @@ class Element(ET.Element):
                     self.text = str(value)
                 elif key[0] == '@':
                     self.set(key[1:], str(value))
+                elif isinstance(value, list):
+                    for v in value:
+                        self.spawn(key)._set_attrs(v)
                 else:
                     self.spawn(key)._set_attrs(value)
         elif isinstance(py_obj, (list, tuple, set)):
-            for i, item in enumerate(py_obj):
-                ele = self if i == 0 else self.parent.spawn(self.tag)  # type: ignore
-                if isinstance(item, Mapping):
-                    ele._set_attrs(item)
-                elif isinstance(item, (list, tuple, set)):
-                    ele._set_attrs(str(item))
-                else:
-                    ele.text = str(item)
+            if self.parent is None:
+                return self.spawn(self.tag)._set_attrs(py_obj)
+            else:
+                for i, item in enumerate(py_obj):
+                    ele = self.parent[i] if len(self.parent) > i else self.parent.spawn(self.tag)
+                    if isinstance(item, (list, tuple, set)):
+                        ele.text = str(item)
+                    else:
+                        ele._set_attrs(item)  # type: ignore
         else:
             self.text = str(py_obj)
 
     @classmethod
     def from_py(cls, py_obj: Any):
         if not isinstance(py_obj, dict) or len(py_obj) != 1:
-            element = cls('root')
+            root = cls('root')
         else:
             tag, value = list(py_obj.items())[0]
             if isinstance(value, Mapping):
-                element = cls(tag)
+                root = cls(tag)
                 py_obj = value
             else:
-                element = cls('root')
-        element._set_attrs(py_obj)
-        return element
+                root = cls('root')
+        root._set_attrs(py_obj)
+        return root
 
 
 def loads(xml: str) -> Any:
     '''Load and convert an XML string into a Python object'''
-    return Element.from_xml(xml).to_py()
+    return XmlElement.from_xml(xml).to_py()
 
 
 def dumps(py_obj: Any, indent: str = 't', minimal: bool = False,
           sort_keys: bool = False) -> str:
     if sort_keys:
         py_obj = sort_dict(py_obj)
-    return Element.from_py(py_obj).to_xml(indent=indent, minimal=minimal)
+    return XmlElement.from_py(py_obj).to_xml(indent=indent, minimal=minimal)

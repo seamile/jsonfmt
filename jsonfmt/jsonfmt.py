@@ -191,13 +191,13 @@ def format_to_text(py_obj: Any, fmt: str, *,
 
 
 def get_output_fp(input_file: IO, cp2clip: bool, diff: bool,
-                  overview: bool, overwrite: bool, del_tmpfile=True) -> IO:
+                  overview: bool, overwrite: bool) -> IO:
     if cp2clip:
         return TEMP_CLIPBOARD
     elif diff:
         name = f"_{os.path.basename(input_file.name)}"
         return NamedTemporaryFile(mode='w+', prefix='jf-', suffix=name,
-                                  delete=del_tmpfile, delete_on_close=False)
+                                  delete=False, delete_on_close=False)
     elif input_file is sys.stdin or overview:
         return sys.stdout
     elif overwrite:
@@ -320,7 +320,6 @@ def main(_args: Optional[Sequence[str]] = None):
     if diff_mode and len(files) != 2:
         utils.exit_with_error('less than two files')
     sort_keys = True if diff_mode else args.sort_keys
-    del_tmpfile = False if args.difftool == 'code' else True
 
     # get sets and pops
     sets = [k.strip() for k in args.set.split(';')] if args.set else []
@@ -343,7 +342,7 @@ def main(_args: Optional[Sequence[str]] = None):
                                     sort_keys=sort_keys, sets=sets, pops=pops)
             # output the result
             output_fp = get_output_fp(input_fp, args.cp2clip, diff_mode,
-                                      args.overview, args.overwrite, del_tmpfile)
+                                      args.overview, args.overwrite)
             output(output_fp, formated, fmt)
 
             if diff_mode:

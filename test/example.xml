@@ -1,13 +1,22 @@
 <?xml version="1.0" ?>
-<personnel>
-  <employee id="e1">
-    <name first="John" last="Doe"/>
-    <department>HR</department>
-    <salary currency="USD">50000</salary>
-  </employee>
-  <employee id="e2">
-    <name first="Jane" last="Smith"/>
-    <department>Tech</department>
-    <salary currency="EUR">60000</salary>
-  </employee>
-</personnel>
+<root>
+  <name>Bob</name>
+  <age>23</age>
+  <gender>纯爷们</gender>
+  <money>3.1415926</money>
+  <actions>
+    <name>eat</name>
+    <calorie>1294.9</calorie>
+    <date>2021-03-02</date>
+  </actions>
+  <actions>
+    <name>sport</name>
+    <calorie>-2375</calorie>
+    <date>2023-04-27</date>
+  </actions>
+  <actions>
+    <name>sleep</name>
+    <calorie>-420.5</calorie>
+    <date>2023-05-15</date>
+  </actions>
+</root>
