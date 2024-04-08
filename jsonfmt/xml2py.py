@@ -94,6 +94,7 @@ class XmlElement(ET.Element):
                     attrs['@text'] = value
                 return attrs or value
         else:
+            _tags = []  # tags of type "_list"
             for child in self:
                 child_attrs = child._get_attrs()  # type: ignore
                 if child.tag in attrs:
@@ -101,10 +102,16 @@ class XmlElement(ET.Element):
                     previous = attrs[child.tag]
                     if not isinstance(previous, _list):
                         attrs[child.tag] = _list([previous, child_attrs])
+                        _tags.append(child.tag)
                     else:
                         previous.append(child_attrs)
                 else:
                     attrs[child.tag] = child_attrs
+
+            # recover "_list" to "list"
+            for k in _tags:
+                attrs[k] = list(attrs[k])
+
             return attrs
 
     def to_py(self) -> Any:

@@ -82,15 +82,15 @@ def extract_elements(qpath: QueryPath, py_obj: Any) -> Any:
 def parse_to_pyobj(text: str, qpath: Optional[QueryPath]) -> Tuple[Any, str]:
     '''read json, toml or yaml from IO and then match sub-element by jmespath'''
     # parse json, toml or yaml to python object
-    loads_methods: dict[str, Callable] = {
-        'json': json.loads,
-        'toml': toml.loads,
-        'xml': xml2py.loads,
-        'yaml': partial(yaml.load, Loader=yaml.Loader),
-    }
+    loads_methods: list[tuple[str, Callable]] = [
+        ('json', json.loads),
+        ('toml', toml.loads),
+        ('xml', xml2py.loads),
+        ('yaml', partial(yaml.load, Loader=yaml.Loader)),
+    ]
 
     # try to load the text to be parsed
-    for fmt, fn_loads in loads_methods.items():
+    for fmt, fn_loads in loads_methods:
         try:
             py_obj = fn_loads(text)
             break
