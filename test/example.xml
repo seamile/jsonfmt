@@ -5,17 +5,17 @@
   <gender>纯爷们</gender>
   <money>3.1415926</money>
   <actions>
-    <name>eat</name>
+    <name>eating</name>
     <calorie>1294.9</calorie>
     <date>2021-03-02</date>
   </actions>
   <actions>
-    <name>sport</name>
+    <name>sporting</name>
     <calorie>-2375</calorie>
     <date>2023-04-27</date>
   </actions>
   <actions>
-    <name>sleep</name>
+    <name>sleeping</name>
     <calorie>-420.5</calorie>
     <date>2023-05-15</date>
   </actions>
