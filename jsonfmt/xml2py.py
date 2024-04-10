@@ -23,15 +23,6 @@ class XmlElement(ET.Element):
         self.tail = tail
         self.parent: Optional[Self] = None
 
-    def __str__(self):
-        def _(ele, n=0):
-            indent = '    ' * n
-            line = f'{indent}{ele.tag} : ATTRIB={ele.attrib}  TEXT={ele.text}\n'
-            for e in ele:
-                line += _(e, n + 1)  # type: ignore
-            return line
-        return _(self)
-
     @classmethod
     def makeelement(cls, tag, attrib, text=None, tail=None) -> Self:
         """Create a new element with the same type."""
@@ -94,6 +85,11 @@ class XmlElement(ET.Element):
                     attrs['@text'] = value
                 return attrs or value
         else:
+            if self.text:
+                value = safe_eval(self.text.strip())
+                if value:
+                    attrs['@text'] = value
+
             _tags = []  # tags of type "_list"
             for child in self:
                 child_attrs = child._get_attrs()  # type: ignore
@@ -136,7 +132,11 @@ class XmlElement(ET.Element):
                 return self.spawn(self.tag)._set_attrs(py_obj)
             else:
                 for i, item in enumerate(py_obj):
-                    ele = self.parent[i] if len(self.parent) > i else self.parent.spawn(self.tag)
+                    if len(self.parent) > i:
+                        ele = self.parent[i]
+                    else:
+                        ele = self.parent.spawn(self.tag)
+
                     if isinstance(item, (list, tuple, set)):
                         ele.text = str(item)
                     else:

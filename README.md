@@ -102,17 +102,17 @@ In order to demonstrate the features of jsonfmt, we need to first create a test 
     "money": 3.1415926,
     "actions": [
         {
-            "name": "eat",
+            "name": "eating",
             "calorie": 1294.9,
             "date": "2021-03-02"
         },
         {
-            "name": "sport",
+            "name": "sporting",
             "calorie": -2375,
             "date": "2023-04-27"
         },
         {
-            "name": "sleep",
+            "name": "sleeping",
             "calorie": -420.5,
             "date": "2023-05-15"
         }
@@ -156,17 +156,17 @@ Output:
         {
             "calorie": 1294.9,
             "date": "2021-03-02",
-            "name": "eat"
+            "name": "eating"
         },
         {
             "calorie": -2375,
             "date": "2023-04-27",
-            "name": "sport"
+            "name": "sporting"
         },
         {
             "calorie": -420.5,
             "date": "2023-05-15",
-            "name": "sleep"
+            "name": "sleeping"
         }
     ],
     "age": 23,
@@ -237,7 +237,7 @@ JMESPath can elegantly use simple syntax to extract part of the content from JSO
 
     ```json
     {
-        "name": "eat",
+        "name": "eating",
         "calorie": 1294.9,
         "date": "2021-03-02"
     }
@@ -255,12 +255,12 @@ JMESPath can elegantly use simple syntax to extract part of the content from JSO
     ```json
     [
         {
-            "name": "sport",
+            "name": "sporting",
             "calorie": -2375,
             "date": "2023-04-27"
         },
         {
-            "name": "sleep",
+            "name": "sleeping",
             "calorie": -420.5,
             "date": "2023-05-15"
         }
@@ -299,15 +299,15 @@ JMESPath can elegantly use simple syntax to extract part of the content from JSO
     ```json
     [
         {
-            "foo": "sport",
+            "foo": "sporting",
             "bar": -2375
         },
         {
-            "foo": "sleep",
+            "foo": "sleeping",
             "bar": -420.5
         },
         {
-            "foo": "eat",
+            "foo": "eating",
             "bar": 1294.9
         }
     ]
@@ -335,9 +335,9 @@ Some queries that are difficult to handle with JMESPath can be easily achieved w
     ```json
     [
         "Bob",
-        "eat",
-        "sport",
-        "sleep"
+        "eating",
+        "sporting",
+        "sleeping"
     ]
     ```
 
@@ -374,26 +374,26 @@ One of the powerful features of jsonfmt is that you can process TOML, XML and YA
     ```yaml
     1. test/example.json
     {
-        "name": "eat",
+        "name": "eating",
         "calorie": 1294.9,
         "date": "2021-03-02"
     }
 
     2. test/example.toml
-    name = "eat"
+    name = "eating"
     calorie = 1294.9
     date = "2021-03-02"
 
     3. test/example.xml
     <?xml version="1.0" ?>
     <root>
-        <name>eat</name>
+        <name>eating</name>
         <calorie>1294.9</calorie>
         <date>2021-03-02</date>
     </root>
 
     4. test/example.yaml
-    name: eat
+    name: eating
     calorie: 1294.9
     date: '2021-03-02'
     ```
@@ -423,13 +423,13 @@ age: 23
 gender: 纯爷们
 money: 3.1415926
 actions:
-- name: eat
+- name: eating
   calorie: 1294.9
   date: '2021-03-02'
-- name: sport
+- name: sporting
   calorie: -2375
   date: '2023-04-27'
-- name: sleep
+- name: sleeping
   calorie: -420.5
   date: '2023-05-15'
 ```
@@ -450,17 +450,17 @@ Output:
     <gender>纯爷们</gender>
     <money>3.1415926</money>
     <actions>
-        <name>eat</name>
+        <name>eating</name>
         <calorie>1294.9</calorie>
         <date>2021-03-02</date>
     </actions>
     <actions>
-        <name>sport</name>
+        <name>sporting</name>
         <calorie>-2375</calorie>
         <date>2023-04-27</date>
     </actions>
     <actions>
-        <name>sleep</name>
+        <name>sleeping</name>
         <calorie>-420.5</calorie>
         <date>2023-05-15</date>
     </actions>
@@ -481,23 +481,38 @@ In DiffMode, jsonfmt will first format the data to be compared (at this time, th
 #### Example 1: Compare two JSON files
 
 ```shell
-$ jf -d test/todo1.json test/todo2.json
+$ jf -d test/example.json test/another.json
 ```
 
 Output:
 
 ```diff
---- /tmp/.../jf-jjn86s7r_todo1.json     2024-03-23 18:22:00
-+++ /tmp/.../jf-vik3bqsu_todo2.json     2024-03-23 18:22:00
-@@ -1,6 +1,6 @@
- {
--  "userId": 1072,
--  "id": 1,
--  "title": "delectus aut autem",
-+  "userId": 1092,
-+  "id": 2,
-+  "title": "molestiae perspiciatis ipsa",
-   "completed": false
+--- /tmp/.../jf-jjn86s7r_example.json     2024-03-23 18:22:00
++++ /tmp/.../jf-vik3bqsu_another.json     2024-03-23 18:22:00
+@@ -3,21 +3,16 @@
+     {
+       "calorie": 1294.9,
+       "date": "2021-03-02",
+-      "name": "eating"
++      "name": "thinking"
+     },
+     {
+-      "calorie": -2375,
+-      "date": "2023-04-27",
+-      "name": "sporting"
+-    },
+-    {
+       "calorie": -420.5,
+       "date": "2023-05-15",
+       "name": "sleeping"
+     }
+   ],
+   "age": 23,
+-  "gender": "纯爷们",
++  "gender": "male",
+   "money": 3.1415926,
+-  "name": "Bob"
++  "name": "Tom"
  }
 ```
 
@@ -506,18 +521,35 @@ Output:
 The `-D DIFFTOOL` option can specify a diff comparison tool. As long as its command format matches `command [options] file1 file2`, it doesn't matter whether it's in jsonfmt's default supported tool list or not.
 
 ```shell
-$ jf -D sdiff test/todo1.json test/todo2.json
+$ jf -D sdiff test/example.json test/another.json
 ```
 
 Output:
 
 ```
-{                                        {
-  "userId": 1072,                   |      "userId": 1092,
-  "id": 1,                          |      "id": 2,
-  "title": "delectus aut autem",    |      "title": "molestiae perspiciatis ipsa",
-  "completed": false                       "completed": false
-}                                        }
+{                                   {
+  "actions": [                        "actions": [
+    {                                   {
+      "calorie": 1294.9,                  "calorie": 1294.9,
+      "date": "2021-03-02",               "date": "2021-03-02",
+      "name": "eating"         |          "name": "thinking"
+    },                                  },
+    {                                   {
+      "calorie": -2375,        <
+      "date": "2023-04-27",    <
+      "name": "sporting"       <
+    },                         <
+    {                          <
+      "calorie": -420.5,                  "calorie": -420.5,
+      "date": "2023-05-15",               "date": "2023-05-15",
+      "name": "sleeping"                  "name": "sleeping"
+    }                                   }
+  ],                                  ],
+  "age": 23,                          "age": 23,
+  "gender": "纯爷们",          |      "gender": "male",
+  "money": 3.1415926,                 "money": 3.1415926,
+  "name": "Bob"                |      "name": "Tom"
+}                                   }
 ```
 
 #### Example 3: Specify options for the selected tool
@@ -525,20 +557,30 @@ Output:
 If you need to pass parameters to the diff-tool, you can use `-D 'DIFFTOOL OPTIONS'`.
 
 ```shell
-$ jf -D 'diff --ignore-case --color=always' test/todo1.json test/todo2.json
+$ jf -D 'diff --ignore-case --color=always' test/example.json test/another.json
 ```
 
 Output:
 
 ```diff
-3,5c3,5
-<   "id": 1,
-<   "title": "delectus aut autem",
-<   "userId": 1072
+6c6
+<       "name": "eating"
 ---
->   "id": 2,
->   "title": "molestiae perspiciatis ipsa",
->   "userId": 1092
+>       "name": "thinking"
+9,13d8
+<       "calorie": -2375,
+<       "date": "2023-04-27",
+<       "name": "sporting"
+<     },
+<     {
+20c15
+<   "gender": "纯爷们",
+---
+>   "gender": "male",
+22c17
+<   "name": "Bob"
+---
+>   "name": "Tom"
 ```
 
 #### Example 4: Compare data in different formats
@@ -546,21 +588,36 @@ Output:
 For data from different sources, their formats, indentation, and key order may be different. In this case, you can use `-i` and `-f` together for diff comparison.
 
 ```shell
-$ jf -d -i 4 -f toml test/todo1.json test/todo3.toml
+$ jf -d -i 4 -f toml test/example.toml test/another.json
 ```
 
 Output:
 
 ```diff
---- /var/.../jf-qw9vm33n_todo1.json     2024-03-23 18:29:17
-+++ /var/.../jf-dqb_fl4x_todo3.toml     2024-03-23 18:29:17
-@@ -1,4 +1,4 @@
- completed = false
--id = 1
--title = "delectus aut autem"
-+id = 3
-+title = "fugiat veniam minus"
- userId = 1072
+--- /var/.../jf-qw9vm33n_example.toml     2024-03-23 18:29:17
++++ /var/.../jf-dqb_fl4x_another.json     2024-03-23 18:29:17
+@@ -1,18 +1,13 @@
+ age = 23
+-gender = "纯爷们"
++gender = "male"
+ money = 3.1415926
+-name = "Bob"
++name = "Tom"
+ [[actions]]
+ calorie = 1294.9
+ date = "2021-03-02"
+-name = "eating"
++name = "thinking"
+
+ [[actions]]
+-calorie = -2375
+-date = "2023-04-27"
+-name = "sporting"
+-
+-[[actions]]
+ calorie = -420.5
+ date = "2023-05-15"
+ name = "sleeping"
 ```
 
 ### 6. Handle Large JSON Data Conveniently
@@ -602,7 +659,7 @@ Sometimes we only want to see an overview of the JSON data without caring about 
 If the root node of the JSON data is a list, only its first child element will be preserved in the overview.
 
 ```shell
-$ jf -o test/test.json
+$ jf -o test/example.json
 ```
 
 Output:
@@ -643,7 +700,7 @@ For items in a list, use `key[i]` or `key.i` to specify. If the index is greater
 
 ```shell
 # Add country = China, and append an item to actions
-$ jf --set 'country=China; actions[3]={"name": "drink"}' test/example.json
+$ jf --set 'country=China; actions[3]={"name": "drinking"}' test/example.json
 ```
 
 Output:
@@ -656,22 +713,22 @@ Output:
     "money": 3.1415926,
     "actions": [
         {
-            "name": "eat",
+            "name": "eating",
             "calorie": 1294.9,
             "date": "2021-03-02"
         },
         {
-            "name": "sport",
+            "name": "sporting",
             "calorie": -2375,
             "date": "2023-04-27"
         },
         {
-            "name": "sleep",
+            "name": "sleeping",
             "calorie": -420.5,
             "date": "2023-05-15"
         },
         {
-            "name": "drink"
+            "name": "drinking"
         }
     ],
     "country": "China"
@@ -695,7 +752,7 @@ Output:
     "money": 1000,
     "actions": [
         {
-            "name": "eat",
+            "name": "eating",
             "calorie": 1294.9,
             "date": "2021-03-02"
         },
@@ -705,7 +762,7 @@ Output:
             "date": "2023-04-27"
         },
         {
-            "name": "sleep",
+            "name": "sleeping",
             "calorie": -420.5,
             "date": "2023-05-15"
         }
@@ -729,12 +786,12 @@ Output:
     "money": 3.1415926,
     "actions": [
         {
-            "name": "eat",
+            "name": "eating",
             "calorie": 1294.9,
             "date": "2021-03-02"
         },
         {
-            "name": "sleep",
+            "name": "sleeping",
             "calorie": -420.5,
             "date": "2023-05-15"
         }

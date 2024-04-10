@@ -10,7 +10,7 @@ from functools import partial
 from pydoc import pager
 from shutil import get_terminal_size
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
-from typing import IO, Any, Callable, List, Optional, Sequence, Tuple, Union
+from typing import IO, Any, Callable, List, Optional, Tuple, Union
 from unittest.mock import patch
 
 import pyperclip
@@ -97,7 +97,7 @@ def parse_to_pyobj(text: str, qpath: Optional[QueryPath]) -> Tuple[Any, str]:
         except Exception:
             continue
     else:
-        raise FormatError("no json, toml or yaml found in the text")
+        raise FormatError("no supported format found")
 
     if qpath is None:
         return py_obj, fmt
@@ -228,13 +228,12 @@ def output(output_fp: IO, text: str, fmt: str):
         output_fp.seek(0)
         output_fp.truncate()
         output_fp.write(text)
-        output_fp.close()
-        utils.print_inf(f'result written to {os.path.basename(output_fp.name)}')
-    elif isinstance(output_fp, io.StringIO) and output_fp.tell() != 0:
+    elif output_fp is TEMP_CLIPBOARD and TEMP_CLIPBOARD.tell() != 0:
         output_fp.write('\n\n')
         output_fp.write(text)
     else:
         output_fp.write(text)
+    output_fp.flush()
 
 
 def process(input_fp: IO, qpath: Optional[QueryPath], to_fmt: Optional[str], *,
@@ -298,22 +297,20 @@ def parse_cmdline_args() -> ArgumentParser:
     return parser
 
 
-def main(_args: Optional[Sequence[str]] = None):
+def main():
     parser = parse_cmdline_args()
-    args = parser.parse_args(_args)
+    args = parser.parse_args()
 
     # check and parse the querypath
     querypath = parse_querypath(args.querypath, args.querylang)
 
     # check if the clipboard is available
     if args.cp2clip and not is_clipboard_available():
-        utils.exit_with_error('clipboard is not available')
+        utils.exit_with_error('clipboard unavailable')
 
     # check the input files
     files = args.files or [sys.stdin]
     n_files = len(files)
-    if n_files < 1:
-        utils.exit_with_error('no data file specified')
 
     # check the diff mode
     diff_mode: bool = args.diff or args.difftool
@@ -347,6 +344,9 @@ def main(_args: Optional[Sequence[str]] = None):
 
             if diff_mode:
                 diff_files.append(output_fp.name)
+            elif args.overwrite:
+                utils.print_inf(f'result written to {os.path.basename(output_fp.name)}')
+
         except (FormatError, JMESPathError, JSONPathError, OSError) as err:
             utils.print_err(err)
         except KeyboardInterrupt:
@@ -361,6 +361,8 @@ def main(_args: Optional[Sequence[str]] = None):
         pyperclip.copy(TEMP_CLIPBOARD.read())
         utils.print_inf('result copied to clipboard')
     elif diff_mode:
+        if len(diff_files) < 2:
+            utils.exit_with_error('not enougth files to compare')
         try:
             compare(diff_files[0], diff_files[1], args.difftool)
         except (OSError, ValueError) as err:

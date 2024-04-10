@@ -102,17 +102,17 @@ $ pip install jsonfmt
     "money": 3.1415926,
     "actions": [
         {
-            "name": "eat",
+            "name": "eating",
             "calorie": 1294.9,
             "date": "2021-03-02"
         },
         {
-            "name": "sport",
+            "name": "sporting",
             "calorie": -2375,
             "date": "2023-04-27"
         },
         {
-            "name": "sleep",
+            "name": "sleeping",
             "calorie": -420.5,
             "date": "2023-05-15"
         }
@@ -156,17 +156,17 @@ $ jf -s -i 4 test/example.json
         {
             "calorie": 1294.9,
             "date": "2021-03-02",
-            "name": "eat"
+            "name": "eating"
         },
         {
             "calorie": -2375,
             "date": "2023-04-27",
-            "name": "sport"
+            "name": "sporting"
         },
         {
             "calorie": -420.5,
             "date": "2023-05-15",
-            "name": "sleep"
+            "name": "sleeping"
         }
     ],
     "age": 23,
@@ -237,7 +237,7 @@ JMESPath 可以优雅地使用简单的语法从 JSON 数据中提取一部分�
 
     ```json
     {
-        "name": "eat",
+        "name": "eating",
         "calorie": 1294.9,
         "date": "2021-03-02"
     }
@@ -255,12 +255,12 @@ JMESPath 可以优雅地使用简单的语法从 JSON 数据中提取一部分�
     ```json
     [
         {
-            "name": "sport",
+            "name": "sporting",
             "calorie": -2375,
             "date": "2023-04-27"
         },
         {
-            "name": "sleep",
+            "name": "sleeping",
             "calorie": -420.5,
             "date": "2023-05-15"
         }
@@ -299,15 +299,15 @@ JMESPath 可以优雅地使用简单的语法从 JSON 数据中提取一部分�
     ```json
     [
         {
-            "foo": "sport",
+            "foo": "sporting",
             "bar": -2375
         },
         {
-            "foo": "sleep",
+            "foo": "sleeping",
             "bar": -420.5
         },
         {
-            "foo": "eat",
+            "foo": "eating",
             "bar": 1294.9
         }
     ]
@@ -335,9 +335,9 @@ JSONPath 的设计灵感来源于 XPath。因此它可以像 XPath 那样通过�
     ```json
     [
         "Bob",
-        "eat",
-        "sport",
-        "sleep"
+        "eating",
+        "sporting",
+        "sleeping"
     ]
     ```
 
@@ -376,26 +376,26 @@ jsonfmt 的众多强大功能之一就是，您可以使用与 JSON 完全同样
     ```yaml
     1. test/example.json
     {
-        "name": "eat",
+        "name": "eating",
         "calorie": 1294.9,
         "date": "2021-03-02"
     }
 
     2. test/example.toml
-    name = "eat"
+    name = "eating"
     calorie = 1294.9
     date = "2021-03-02"
 
     3. test/example.xml
     <?xml version="1.0" ?>
     <root>
-        <name>eat</name>
+        <name>eating</name>
         <calorie>1294.9</calorie>
         <date>2021-03-02</date>
     </root>
 
     4. test/example.yaml
-    name: eat
+    name: eating
     calorie: 1294.9
     date: '2021-03-02'
     ```
@@ -424,13 +424,13 @@ age: 23
 gender: 纯爷们
 money: 3.1415926
 actions:
-- name: eat
+- name: eating
   calorie: 1294.9
   date: '2021-03-02'
-- name: sport
+- name: sporting
   calorie: -2375
   date: '2023-04-27'
-- name: sleep
+- name: sleeping
   calorie: -420.5
   date: '2023-05-15'
 ```
@@ -451,17 +451,17 @@ $ jf test/example.toml -f xml
     <gender>纯爷们</gender>
     <money>3.1415926</money>
     <actions>
-        <name>eat</name>
+        <name>eating</name>
         <calorie>1294.9</calorie>
         <date>2021-03-02</date>
     </actions>
     <actions>
-        <name>sport</name>
+        <name>sporting</name>
         <calorie>-2375</calorie>
         <date>2023-04-27</date>
     </actions>
     <actions>
-        <name>sleep</name>
+        <name>sleeping</name>
         <calorie>-420.5</calorie>
         <date>2023-05-15</date>
     </actions>
@@ -482,23 +482,38 @@ jsonfmt 默认支持多种差异对比工具，如：`diff`、`vimdiff`、`git`�
 #### 例1. 对比两个 JSON 文件
 
 ```shell
-$ jf -d test/todo1.json test/todo2.json
+$ jf -d test/example.json test/another.json
 ```
 
 输出：
 
 ```diff
---- /tmp/.../jf-jjn86s7r_todo1.json     2024-03-23 18:22:00
-+++ /tmp/.../jf-vik3bqsu_todo2.json     2024-03-23 18:22:00
-@@ -1,6 +1,6 @@
- {
--  "userId": 1072,
--  "id": 1,
--  "title": "delectus aut autem",
-+  "userId": 1092,
-+  "id": 2,
-+  "title": "molestiae perspiciatis ipsa",
-   "completed": false
+--- /tmp/.../jf-jjn86s7r_example.json     2024-03-23 18:22:00
++++ /tmp/.../jf-vik3bqsu_another.json     2024-03-23 18:22:00
+@@ -3,21 +3,16 @@
+     {
+       "calorie": 1294.9,
+       "date": "2021-03-02",
+-      "name": "eating"
++      "name": "thinking"
+     },
+     {
+-      "calorie": -2375,
+-      "date": "2023-04-27",
+-      "name": "sporting"
+-    },
+-    {
+       "calorie": -420.5,
+       "date": "2023-05-15",
+       "name": "sleeping"
+     }
+   ],
+   "age": 23,
+-  "gender": "纯爷们",
++  "gender": "male",
+   "money": 3.1415926,
+-  "name": "Bob"
++  "name": "Tom"
  }
 ```
 
@@ -507,18 +522,35 @@ $ jf -d test/todo1.json test/todo2.json
 `-D DIFFTOOL` 选项可以指定一款差异对比工具。只要其命令格式满足 `command [options] file1 file2` 即可，无论它是否在 jsonfmt 默认支持的工具列表中。
 
 ```shell
-$ jf -D sdiff test/todo1.json test/todo2.json
+$ jf -D sdiff test/example.json test/another.json
 ```
 
 输出：
 
 ```
-{                                        {
-  "userId": 1072,                   |      "userId": 1092,
-  "id": 1,                          |      "id": 2,
-  "title": "delectus aut autem",    |      "title": "molestiae perspiciatis ipsa",
-  "completed": false                       "completed": false
-}                                        }
+{                                   {
+  "actions": [                        "actions": [
+    {                                   {
+      "calorie": 1294.9,                  "calorie": 1294.9,
+      "date": "2021-03-02",               "date": "2021-03-02",
+      "name": "eating"         |          "name": "thinking"
+    },                                  },
+    {                                   {
+      "calorie": -2375,        <
+      "date": "2023-04-27",    <
+      "name": "sporting"       <
+    },                         <
+    {                          <
+      "calorie": -420.5,                  "calorie": -420.5,
+      "date": "2023-05-15",               "date": "2023-05-15",
+      "name": "sleeping"                  "name": "sleeping"
+    }                                   }
+  ],                                  ],
+  "age": 23,                          "age": 23,
+  "gender": "纯爷们",          |      "gender": "male",
+  "money": 3.1415926,                 "money": 3.1415926,
+  "name": "Bob"                |      "name": "Tom"
+}                                   }
 ```
 
 #### 例3. 为选定的工具指定参数
@@ -526,20 +558,30 @@ $ jf -D sdiff test/todo1.json test/todo2.json
 如果需要向差异对比工具传递参数，可以使用 `-D 'DIFFTOOL OPTIONS'` 来操作。
 
 ```shell
-$ jf -D 'diff --ignore-case --color=always' test/todo1.json test/todo2.json
+$ jf -D 'diff --ignore-case --color=always' test/example.json test/another.json
 ```
 
 输出：
 
 ```diff
-3,5c3,5
-<   "id": 1,
-<   "title": "delectus aut autem",
-<   "userId": 1072
+6c6
+<       "name": "eating"
 ---
->   "id": 2,
->   "title": "molestiae perspiciatis ipsa",
->   "userId": 1092
+>       "name": "thinking"
+9,13d8
+<       "calorie": -2375,
+<       "date": "2023-04-27",
+<       "name": "sporting"
+<     },
+<     {
+20c15
+<   "gender": "纯爷们",
+---
+>   "gender": "male",
+22c17
+<   "name": "Bob"
+---
+>   "name": "Tom"
 ```
 
 #### 例4. 对比不同格式的数据
@@ -547,21 +589,36 @@ $ jf -D 'diff --ignore-case --color=always' test/todo1.json test/todo2.json
 对于不同来源的数据，其格式、缩进，以及键的顺序可能都不一样，这时可以使用 `-i`、`-f` 配合来进行差异对比。
 
 ```shell
-$ jf -d -i 4 -f toml test/todo1.json test/todo3.toml
+$ jf -d -i 4 -f toml test/example.toml test/another.json
 ```
 
 输出：
 
 ```diff
---- /var/.../jf-qw9vm33n_todo1.json     2024-03-23 18:29:17
-+++ /var/.../jf-dqb_fl4x_todo3.toml     2024-03-23 18:29:17
-@@ -1,4 +1,4 @@
- completed = false
--id = 1
--title = "delectus aut autem"
-+id = 3
-+title = "fugiat veniam minus"
- userId = 1072
+--- /var/.../jf-qw9vm33n_example.toml     2024-03-23 18:29:17
++++ /var/.../jf-dqb_fl4x_another.json     2024-03-23 18:29:17
+@@ -1,18 +1,13 @@
+ age = 23
+-gender = "纯爷们"
++gender = "male"
+ money = 3.1415926
+-name = "Bob"
++name = "Tom"
+ [[actions]]
+ calorie = 1294.9
+ date = "2021-03-02"
+-name = "eating"
++name = "thinking"
+
+ [[actions]]
+-calorie = -2375
+-date = "2023-04-27"
+-name = "sporting"
+-
+-[[actions]]
+ calorie = -420.5
+ date = "2023-05-15"
+ name = "sleeping"
 ```
 
 
@@ -606,7 +663,7 @@ $ curl -s https://jsonplaceholder.typicode.com/users | jf
 如果 JSON 数据的根节点是一个列表，概览中仅保留它的第一个子元素。
 
 ```shell
-$ jf -o test/test.json
+$ jf -o test/example.json
 ```
 
 输出：
@@ -648,7 +705,7 @@ $ jf -C test/example.json
 
 ```shell
 # 添加 country = China，并为 actions 追加一项
-$ jf --set 'country=China; actions[3]={"name": "drink"}' test/example.json
+$ jf --set 'country=China; actions[3]={"name": "drinking"}' test/example.json
 ```
 
 输出：
@@ -661,22 +718,22 @@ $ jf --set 'country=China; actions[3]={"name": "drink"}' test/example.json
     "money": 3.1415926,
     "actions": [
         {
-            "name": "eat",
+            "name": "eating",
             "calorie": 1294.9,
             "date": "2021-03-02"
         },
         {
-            "name": "sport",
+            "name": "sporting",
             "calorie": -2375,
             "date": "2023-04-27"
         },
         {
-            "name": "sleep",
+            "name": "sleeping",
             "calorie": -420.5,
             "date": "2023-05-15"
         },
         {
-            "name": "drink"
+            "name": "drinking"
         }
     ],
     "country": "China"
@@ -700,7 +757,7 @@ $ jf --set 'money=1000; actions[1].name=swim' test/example.json
     "money": 1000,
     "actions": [
         {
-            "name": "eat",
+            "name": "eating",
             "calorie": 1294.9,
             "date": "2021-03-02"
         },
@@ -710,7 +767,7 @@ $ jf --set 'money=1000; actions[1].name=swim' test/example.json
             "date": "2023-04-27"
         },
         {
-            "name": "sleep",
+            "name": "sleeping",
             "calorie": -420.5,
             "date": "2023-05-15"
         }
@@ -734,12 +791,12 @@ $ jf --pop 'gender; actions[1]' test/example.json
     "money": 3.1415926,
     "actions": [
         {
-            "name": "eat",
+            "name": "eating",
             "calorie": 1294.9,
             "date": "2021-03-02"
         },
         {
-            "name": "sleep",
+            "name": "sleeping",
             "calorie": -420.5,
             "date": "2023-05-15"
         }

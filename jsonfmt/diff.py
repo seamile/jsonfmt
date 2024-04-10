@@ -6,14 +6,14 @@ from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import DiffLexer
 
-from .utils import print_err
+from .utils import print_inf
 
 
 def cmp_by_diff(path1: str, path2: str):
     '''use diff to compare the difference between two files'''
     stat, result = getstatusoutput(f'diff -u {path1} {path2}')
     if stat == 0:
-        print_err(result)
+        print_inf('no difference')
     else:
         output = highlight(result, DiffLexer(), TerminalFormatter())
         print(output)
