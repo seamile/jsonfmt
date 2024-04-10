@@ -14,7 +14,7 @@
 
 </div>
 
-### <div align="center"><a href="README.md">🇬🇧 English</a> | <a href="README_CN.md">🇨🇳 中文版</a></div>
+### <div align="center"><a href="README_CN.md">🇨🇳 中文版</a></div>
 
 **_jsonfmt_** (JSON Formatter) is a simple yet powerful JSON processing tool.
 
@@ -22,7 +22,7 @@ As we all know, Python has a built-in tool for formatting JSON data: `python -m 
 
 🎨 It can not only print JSON data in a pretty way,
 
-🔄 But also convert JSON, TOML, and YAML data formats to each other,
+🔄 But also convert JSON, TOML, XML and YAML data formats to each other,
 
 🔎 And even extract content from JSON data using JMESPATH or JSONPATH.
 
@@ -68,7 +68,7 @@ $ pip install jsonfmt
 
 **Positional Arguments**
 
-`files`: The data files to process, supporting JSON / TOML / YAML formats.
+`files`: The data files to process, supporting JSON / TOML / XML / YAML formats.
 
 **Options**
 
@@ -80,7 +80,7 @@ $ pip install jsonfmt
 - `-O`: OverwriteMode, which will overwrite the original file with the formated text.
 - `-c`: Suppress all whitespace separation (most compact), only valid for JSON.
 - `-e`: Escape all characters to ASCII codes.
-- `-f`: The format to output (default: same as input data format, options: `json` / `toml` / `yaml`).
+- `-f`: The format to output (default: same as input data format, options: `json` / `toml` / `xml` / `yaml`).
 - `-i`: Number of spaces for indentation (default: 2, range: 0~8, set to 't' to use <kbd>Tab</kbd> as indentation).
 - `-l`: Query language for extracting data (default: auto-detect, options: jmespath / jsonpath).
 - `-p QUERYPATH`: JMESPath or JSONPath query path.
@@ -102,20 +102,25 @@ In order to demonstrate the features of jsonfmt, we need to first create a test 
     "money": 3.1415926,
     "actions": [
         {
-            "name": "eat",
-            "calorie": 294.9,
+            "name": "eating",
+            "calorie": 1294.9,
             "date": "2021-03-02"
         },
         {
-            "name": "sport",
-            "calorie": -375,
+            "name": "sporting",
+            "calorie": -2375,
             "date": "2023-04-27"
+        },
+        {
+            "name": "sleeping",
+            "calorie": -420.5,
+            "date": "2023-05-15"
         }
     ]
 }
 ```
 
-Then, convert this data to TOML and YAML formats, and save them as example.toml and example.yaml respectively.
+Then, convert this data to TOML, XML and YAML formats, and save them as example.toml, example.xml and example.yaml respectively.
 
 These data files can be found in the *test* folder of the source code:
 
@@ -123,6 +128,7 @@ These data files can be found in the *test* folder of the source code:
 test/
 |- example.json
 |- example.toml
+|- example.xml
 |- example.yaml
 ```
 
@@ -148,14 +154,19 @@ Output:
 {
     "actions": [
         {
-            "calorie": 294.9,
+            "calorie": 1294.9,
             "date": "2021-03-02",
-            "name": "eat"
+            "name": "eating"
         },
         {
-            "calorie": -375,
+            "calorie": -2375,
             "date": "2023-04-27",
-            "name": "sport"
+            "name": "sporting"
+        },
+        {
+            "calorie": -420.5,
+            "date": "2023-05-15",
+            "name": "sleeping"
         }
     ],
     "age": 23,
@@ -226,17 +237,17 @@ JMESPath can elegantly use simple syntax to extract part of the content from JSO
 
     ```json
     {
-        "name": "eat",
-        "calorie": 294.9,
+        "name": "eating",
+        "calorie": 1294.9,
         "date": "2021-03-02"
     }
     ```
 
-- Filter all items with `calorie > 0` from `actions`.
+- Filter all items with `calorie < 0` from `actions`.
 
     ```shell
     # Here, `0` means 0 is a number
-    $ jf -p 'actions[?calorie>`0`]' test/example.json
+    $ jf -p 'actions[?calorie<`0`]' test/example.json
     ```
 
     Output:
@@ -244,9 +255,14 @@ JMESPath can elegantly use simple syntax to extract part of the content from JSO
     ```json
     [
         {
-            "name": "eat",
-            "calorie": 294.9,
-            "date": "2021-03-02"
+            "name": "sporting",
+            "calorie": -2375,
+            "date": "2023-04-27"
+        },
+        {
+            "name": "sleeping",
+            "calorie": -420.5,
+            "date": "2023-05-15"
         }
     ]
     ```
@@ -268,7 +284,7 @@ JMESPath can elegantly use simple syntax to extract part of the content from JSO
             "money",
             "actions"
         ],
-        "actions_len": 2
+        "actions_len": 3
     }
     ```
 
@@ -283,12 +299,16 @@ JMESPath can elegantly use simple syntax to extract part of the content from JSO
     ```json
     [
         {
-            "foo": "sport",
-            "bar": -375
+            "foo": "sporting",
+            "bar": -2375
         },
         {
-            "foo": "eat",
-            "bar": 294.9
+            "foo": "sleeping",
+            "bar": -420.5
+        },
+        {
+            "foo": "eating",
+            "bar": 1294.9
         }
     ]
     ```
@@ -315,14 +335,15 @@ Some queries that are difficult to handle with JMESPath can be easily achieved w
     ```json
     [
         "Bob",
-        "eat",
-        "sport"
+        "eating",
+        "sporting",
+        "sleeping"
     ]
     ```
 
-#### Querying TOML and YAML
+#### Querying TOML, XML and YAML
 
-One of the powerful features of jsonfmt is that you can process TOML and YAML in exactly the same way as JSON, and freely convert the result format. You can even process these three formats simultaneously in one command.
+One of the powerful features of jsonfmt is that you can process TOML, XML and YAML in exactly the same way as JSON, and freely convert the result format. You can even process these four formats simultaneously in one command.
 
 - Read data from a toml file and output in YAML format
 
@@ -339,7 +360,7 @@ One of the powerful features of jsonfmt is that you can process TOML and YAML in
     - gender
     - money
     - actions
-    actions_len: 2
+    actions_len: 3
     ```
 
 - Process three formats at once
@@ -353,58 +374,45 @@ One of the powerful features of jsonfmt is that you can process TOML and YAML in
     ```yaml
     1. test/example.json
     {
-        "name": "eat",
-        "calorie": 294.9,
+        "name": "eating",
+        "calorie": 1294.9,
         "date": "2021-03-02"
     }
 
     2. test/example.toml
-    name = "eat"
-    calorie = 294.9
+    name = "eating"
+    calorie = 1294.9
     date = "2021-03-02"
 
-    3. test/example.yaml
-    name: eat
-    calorie: 294.9
+    3. test/example.xml
+    <?xml version="1.0" ?>
+    <root>
+        <name>eating</name>
+        <calorie>1294.9</calorie>
+        <date>2021-03-02</date>
+    </root>
+
+    4. test/example.yaml
+    name: eating
+    calorie: 1294.9
     date: '2021-03-02'
     ```
 
 
 ### 4. Format Conversion
 
-*jsonfmt* supports processing JSON, TOML, and YAML formats. Each format can be converted to other formats by specifying the "-f" option.
+*jsonfmt* supports processing JSON, TOML, XML and YAML formats. Each format can be converted to other formats by specifying the "-f" option.
 
 <div style="color: orange"><strong>Note:</strong></div>
-In TOML, `null` values are invalid. Therefore, when converting from other formats to TOML, all null values will be removed.
 
-#### JSON to TOML
+1. `null` is not supported in TOML. Therefore, all `null` values will be deleted when converting from other formats to TOML.
 
-```shell
-$ jf test/example.json -f toml
-```
+2. XML does not support multi-dimensional arrays. Therefore, if the original data contains multi-dimensional arrays, a wrong data will be generated during the conversion to XML format.
 
-Output:
-
-```toml
-name = "Bob"
-age = 23
-gender = "纯爷们"
-money = 3.1415926
-[[actions]]
-name = "eat"
-calorie = 294.9
-date = "2021-03-02"
-
-[[actions]]
-name = "sport"
-calorie = -375
-date = "2023-04-27"
-```
-
-#### TOML to YAML
+#### Example 1. JSON to YAML
 
 ```shell
-$ jf test/example.toml -f yaml
+$ jf test/example.json -f yaml
 ```
 
 Output:
@@ -415,41 +423,48 @@ age: 23
 gender: 纯爷们
 money: 3.1415926
 actions:
-- name: eat
-  calorie: 294.9
+- name: eating
+  calorie: 1294.9
   date: '2021-03-02'
-- name: sport
-  calorie: -375
+- name: sporting
+  calorie: -2375
   date: '2023-04-27'
+- name: sleeping
+  calorie: -420.5
+  date: '2023-05-15'
 ```
 
-#### YAML to JSON
+#### Example 2. TOML to XML
 
 ```shell
-$ jf test/example.yaml -f json
+$ jf test/example.toml -f xml
 ```
 
 Output:
 
-```json
-{
-    "name": "Bob",
-    "age": 23,
-    "gender": "纯爷们",
-    "money": 3.1415926,
-    "actions": [
-        {
-            "name": "eat",
-            "calorie": 294.9,
-            "date": "2021-03-02"
-        },
-        {
-            "name": "sport",
-            "calorie": -375,
-            "date": "2023-04-27"
-        }
-    ]
-}
+```xml
+<?xml version="1.0" ?>
+<root>
+    <name>Bob</name>
+    <age>23</age>
+    <gender>纯爷们</gender>
+    <money>3.1415926</money>
+    <actions>
+        <name>eating</name>
+        <calorie>1294.9</calorie>
+        <date>2021-03-02</date>
+    </actions>
+    <actions>
+        <name>sporting</name>
+        <calorie>-2375</calorie>
+        <date>2023-04-27</date>
+    </actions>
+    <actions>
+        <name>sleeping</name>
+        <calorie>-420.5</calorie>
+        <date>2023-05-15</date>
+    </actions>
+</root>
 ```
 
 
@@ -463,28 +478,41 @@ By default, jsonfmt will first check if git is installed on the computer. If git
 
 In DiffMode, jsonfmt will first format the data to be compared (at this time, the `-s` option will be automatically enabled), and save the result to a temporary file, and then call the specified tool for diff comparison.
 
-Once the comparison is complete, the temporary file will be automatically deleted. However, if VS Code is selected as the diff-tool, the temporary file will not be immediately deleted. Instead, it will be removed by the operating system during the cleanup process.
-
 #### Example 1: Compare two JSON files
 
 ```shell
-$ jf -d test/todo1.json test/todo2.json
+$ jf -d test/example.json test/another.json
 ```
 
 Output:
 
 ```diff
---- /tmp/.../jf-jjn86s7r_todo1.json     2024-03-23 18:22:00
-+++ /tmp/.../jf-vik3bqsu_todo2.json     2024-03-23 18:22:00
-@@ -1,6 +1,6 @@
- {
--  "userId": 1072,
--  "id": 1,
--  "title": "delectus aut autem",
-+  "userId": 1092,
-+  "id": 2,
-+  "title": "molestiae perspiciatis ipsa",
-   "completed": false
+--- /tmp/.../jf-jjn86s7r_example.json     2024-03-23 18:22:00
++++ /tmp/.../jf-vik3bqsu_another.json     2024-03-23 18:22:00
+@@ -3,21 +3,16 @@
+     {
+       "calorie": 1294.9,
+       "date": "2021-03-02",
+-      "name": "eating"
++      "name": "thinking"
+     },
+     {
+-      "calorie": -2375,
+-      "date": "2023-04-27",
+-      "name": "sporting"
+-    },
+-    {
+       "calorie": -420.5,
+       "date": "2023-05-15",
+       "name": "sleeping"
+     }
+   ],
+   "age": 23,
+-  "gender": "纯爷们",
++  "gender": "male",
+   "money": 3.1415926,
+-  "name": "Bob"
++  "name": "Tom"
  }
 ```
 
@@ -493,18 +521,35 @@ Output:
 The `-D DIFFTOOL` option can specify a diff comparison tool. As long as its command format matches `command [options] file1 file2`, it doesn't matter whether it's in jsonfmt's default supported tool list or not.
 
 ```shell
-$ jf -D sdiff test/todo1.json test/todo2.json
+$ jf -D sdiff test/example.json test/another.json
 ```
 
 Output:
 
 ```
-{                                        {
-  "userId": 1072,                   |      "userId": 1092,
-  "id": 1,                          |      "id": 2,
-  "title": "delectus aut autem",    |      "title": "molestiae perspiciatis ipsa",
-  "completed": false                       "completed": false
-}                                        }
+{                                   {
+  "actions": [                        "actions": [
+    {                                   {
+      "calorie": 1294.9,                  "calorie": 1294.9,
+      "date": "2021-03-02",               "date": "2021-03-02",
+      "name": "eating"         |          "name": "thinking"
+    },                                  },
+    {                                   {
+      "calorie": -2375,        <
+      "date": "2023-04-27",    <
+      "name": "sporting"       <
+    },                         <
+    {                          <
+      "calorie": -420.5,                  "calorie": -420.5,
+      "date": "2023-05-15",               "date": "2023-05-15",
+      "name": "sleeping"                  "name": "sleeping"
+    }                                   }
+  ],                                  ],
+  "age": 23,                          "age": 23,
+  "gender": "纯爷们",          |      "gender": "male",
+  "money": 3.1415926,                 "money": 3.1415926,
+  "name": "Bob"                |      "name": "Tom"
+}                                   }
 ```
 
 #### Example 3: Specify options for the selected tool
@@ -512,20 +557,30 @@ Output:
 If you need to pass parameters to the diff-tool, you can use `-D 'DIFFTOOL OPTIONS'`.
 
 ```shell
-$ jf -D 'diff --ignore-case --color=always' test/todo1.json test/todo2.json
+$ jf -D 'diff --ignore-case --color=always' test/example.json test/another.json
 ```
 
 Output:
 
 ```diff
-3,5c3,5
-<   "id": 1,
-<   "title": "delectus aut autem",
-<   "userId": 1072
+6c6
+<       "name": "eating"
 ---
->   "id": 2,
->   "title": "molestiae perspiciatis ipsa",
->   "userId": 1092
+>       "name": "thinking"
+9,13d8
+<       "calorie": -2375,
+<       "date": "2023-04-27",
+<       "name": "sporting"
+<     },
+<     {
+20c15
+<   "gender": "纯爷们",
+---
+>   "gender": "male",
+22c17
+<   "name": "Bob"
+---
+>   "name": "Tom"
 ```
 
 #### Example 4: Compare data in different formats
@@ -533,21 +588,36 @@ Output:
 For data from different sources, their formats, indentation, and key order may be different. In this case, you can use `-i` and `-f` together for diff comparison.
 
 ```shell
-$ jf -d -i 4 -f toml test/todo1.json test/todo3.toml
+$ jf -d -i 4 -f toml test/example.toml test/another.json
 ```
 
 Output:
 
 ```diff
---- /var/.../jf-qw9vm33n_todo1.json     2024-03-23 18:29:17
-+++ /var/.../jf-dqb_fl4x_todo3.toml     2024-03-23 18:29:17
-@@ -1,4 +1,4 @@
- completed = false
--id = 1
--title = "delectus aut autem"
-+id = 3
-+title = "fugiat veniam minus"
- userId = 1072
+--- /var/.../jf-qw9vm33n_example.toml     2024-03-23 18:29:17
++++ /var/.../jf-dqb_fl4x_another.json     2024-03-23 18:29:17
+@@ -1,18 +1,13 @@
+ age = 23
+-gender = "纯爷们"
++gender = "male"
+ money = 3.1415926
+-name = "Bob"
++name = "Tom"
+ [[actions]]
+ calorie = 1294.9
+ date = "2021-03-02"
+-name = "eating"
++name = "thinking"
+
+ [[actions]]
+-calorie = -2375
+-date = "2023-04-27"
+-name = "sporting"
+-
+-[[actions]]
+ calorie = -420.5
+ date = "2023-05-15"
+ name = "sleeping"
 ```
 
 ### 6. Handle Large JSON Data Conveniently
@@ -589,18 +659,18 @@ Sometimes we only want to see an overview of the JSON data without caring about 
 If the root node of the JSON data is a list, only its first child element will be preserved in the overview.
 
 ```shell
-$ jf -o test/test.json
+$ jf -o test/example.json
 ```
 
 Output:
 
 ```json
 {
-    "actions": [],
+    "name": "...",
     "age": 23,
     "gender": "...",
     "money": 3.1415926,
-    "name": "..."
+    "actions": []
 }
 ```
 
@@ -630,7 +700,7 @@ For items in a list, use `key[i]` or `key.i` to specify. If the index is greater
 
 ```shell
 # Add country = China, and append an item to actions
-$ jf --set 'country=China; actions[2]={"name": "drink"}' test/example.json
+$ jf --set 'country=China; actions[3]={"name": "drinking"}' test/example.json
 ```
 
 Output:
@@ -643,17 +713,22 @@ Output:
     "money": 3.1415926,
     "actions": [
         {
-            "name": "eat",
-            "calorie": 294.9,
+            "name": "eating",
+            "calorie": 1294.9,
             "date": "2021-03-02"
         },
         {
-            "name": "sport",
-            "calorie": -375,
+            "name": "sporting",
+            "calorie": -2375,
             "date": "2023-04-27"
         },
         {
-            "name": "drink"
+            "name": "sleeping",
+            "calorie": -420.5,
+            "date": "2023-05-15"
+        },
+        {
+            "name": "drinking"
         }
     ],
     "country": "China"
@@ -677,14 +752,19 @@ Output:
     "money": 1000,
     "actions": [
         {
-            "name": "eat",
-            "calorie": 294.9,
+            "name": "eating",
+            "calorie": 1294.9,
             "date": "2021-03-02"
         },
         {
             "name": "swim",
-            "calorie": -375,
+            "calorie": -2375,
             "date": "2023-04-27"
+        },
+        {
+            "name": "sleeping",
+            "calorie": -420.5,
+            "date": "2023-05-15"
         }
     ]
 }
@@ -706,9 +786,14 @@ Output:
     "money": 3.1415926,
     "actions": [
         {
-            "name": "eat",
-            "calorie": 294.9,
+            "name": "eating",
+            "calorie": 1294.9,
             "date": "2021-03-02"
+        },
+        {
+            "name": "sleeping",
+            "calorie": -420.5,
+            "date": "2023-05-15"
         }
     ]
 }
@@ -740,7 +825,6 @@ $ jf -s -i 4 --set 'name=Alex' -O test/example.json
 
 ## TODO
 
-- [ ] Add XML format support
-- [ ] Add INI format support
 - [ ] Add URL support to directly compare data from two APIs
+- [ ] Add INI format support
 - [ ] Add merge mode to combine multiple JSON or other formatted data into one
