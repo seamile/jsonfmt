@@ -196,8 +196,7 @@ def get_output_fp(input_file: IO, cp2clip: bool, diff: bool,
         return TEMP_CLIPBOARD
     elif diff:
         name = f"_{os.path.basename(input_file.name)}"
-        return NamedTemporaryFile(mode='w+', prefix='jf-', suffix=name,
-                                  delete=False, delete_on_close=False)
+        return NamedTemporaryFile(mode='w+', prefix='jf-', suffix=name, delete=False)
     elif input_file is sys.stdin or overview:
         return sys.stdout
     elif overwrite:
@@ -361,11 +360,9 @@ def main():
         pyperclip.copy(TEMP_CLIPBOARD.read())
         utils.print_inf('result copied to clipboard')
     elif diff_mode:
-        if len(diff_files) < 2:
-            utils.exit_with_error('not enougth files to compare')
         try:
             compare(diff_files[0], diff_files[1], args.difftool)
-        except (OSError, ValueError) as err:
+        except (OSError, ValueError, IndexError) as err:
             utils.exit_with_error(err)
 
 

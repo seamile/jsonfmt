@@ -1,10 +1,16 @@
+import sys
 import xml.etree.ElementTree as ET
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, Optional, Self
 from xml.dom.minidom import parseString
 
 from .utils import safe_eval, sort_dict
+
+if sys.version_info < (3, 11):
+    from typing import Any, Dict, Optional, TypeVar, Union
+    Self = TypeVar('Self', bound='XmlElement')
+else:
+    from typing import Any, Dict, Optional, Self, Union
 
 
 class _list(list):
@@ -29,7 +35,7 @@ class XmlElement(ET.Element):
         return cls(tag, attrib, text, tail)
 
     @classmethod
-    def clone(cls, src: Self | ET.Element, dst: Optional[Self] = None) -> Self:
+    def clone(cls, src: Union[Self, ET.Element], dst: Optional[Self] = None) -> Self:
         if dst is None:
             dst = cls(src.tag, src.attrib, src.text, src.tail)
 
@@ -46,7 +52,7 @@ class XmlElement(ET.Element):
 
     def to_xml(self,
                minimal: Optional[bool] = None,
-               indent: Optional[int | str] = 2
+               indent: Optional[Union[int, str]] = 2
                ) -> str:
         ele = deepcopy(self)
         for e in ele.iter():
@@ -73,7 +79,7 @@ class XmlElement(ET.Element):
         self.append(child)
         return child
 
-    def _get_attrs(self) -> Optional[dict[str, Any]]:
+    def _get_attrs(self) -> Optional[Dict[str, Any]]:
         attrs = {f'@{k}': safe_eval(v) for k, v in self.attrib.items()}
 
         if len(self) == 0:

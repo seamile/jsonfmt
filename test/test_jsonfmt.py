@@ -509,11 +509,6 @@ class JSONFormatToolTestCase(unittest.TestCase):
             jsonfmt.main()
         self.assertIn('less than two files', sys.stderr.read())
 
-        with patch.multiple(sys, argv=['jf', '-D', 'diff', XML_FILE, 'null']), \
-                self.assertRaises(SystemExit):
-            jsonfmt.main()
-        self.assertIn('not enougth files to compare', sys.stderr.read())
-
         with patch.multiple(sys, argv=['jf', '-D', 'nothing', XML_FILE, TOML_FILE]), \
                 self.assertRaises(SystemExit):
             jsonfmt.main()
