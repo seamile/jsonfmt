@@ -20,10 +20,11 @@ class _list(list):
 class XmlElement(ET.Element):
     def __init__(self,
                  tag: str,
-                 attrib={},
+                 attrib: Optional[dict] = None,
                  text: Optional[str] = None,
                  tail: Optional[str] = None,
                  **extra) -> None:
+        attrib = attrib or {}
         super().__init__(tag, attrib, **extra)
         self.text = text
         self.tail = tail
@@ -71,8 +72,13 @@ class XmlElement(ET.Element):
                 indent = '\t'
             return doc.toprettyxml(indent=indent)
 
-    def spawn(self, tag: str, attrib={}, text=None, tail=None, **extra) -> Self:
+    def spawn(self, tag: str,
+              attrib: Optional[dict] = None,
+              text: Optional[str] = None,
+              tail: Optional[str] = None,
+              **extra) -> Self:
         """Create and append a new child element to the current element."""
+        attrib = attrib or {}
         attrib = {**attrib, **extra}
         child = self.makeelement(tag, attrib, text, tail)
         child.parent = self
