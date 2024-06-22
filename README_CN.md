@@ -12,9 +12,8 @@
 [![Code Grade](https://app.codacy.com/project/badge/Grade/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Test Coverage](https://app.codacy.com/project/badge/Coverage/1e12e3cd8c8342bca68db4caf5b6a31d)](https://app.codacy.com/gh/seamile/jsonfmt/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 
+<a style="color: grey;">🇨🇳 中文版</a>　<a href="README.md">🇬🇧 English</a>
 </div>
-
-### <div align="center"><a href="README.md">🇬🇧 English</a></div>
 
 **_jsonfmt_**（JSON Formatter）是一款简单而强大的 JSON 处理工具。
 

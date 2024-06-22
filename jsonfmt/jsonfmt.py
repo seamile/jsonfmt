@@ -291,7 +291,7 @@ def parse_cmdline_args() -> ArgumentParser:
                         help='key-value pairs to delete (seperated by `;`)')
     parser.add_argument(dest='files', nargs='*',
                         help='the files that will be processed')
-    parser.add_argument('-v', dest='version', action='version',
+    parser.add_argument('-v', '--version', action='version',
                         version=__version__, help="show the version")
     return parser
 
