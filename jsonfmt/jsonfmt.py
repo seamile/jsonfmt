@@ -26,8 +26,8 @@ from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, XmlLexer, YamlLexer
 
-from . import __version__, utils, xml2py
-from .diff import compare
+from jsonfmt import __version__, utils, xml2py
+from jsonfmt.diff import compare
 
 QueryPath = Union[JMESPath, JSONPath]
 TEMP_CLIPBOARD = io.StringIO()
@@ -58,7 +58,7 @@ def parse_querypath(querypath: Optional[str], querylang: Optional[str]):
     for parse in parsers:
         try:
             return parse(querypath)
-        except (JMESPathError, JSONPathError, AttributeError):
+        except (JMESPathError, JSONPathError, AttributeError):  # noqa: PERF203
             pass
 
     utils.exit_with_error(f'invalid querypath expression: "{querypath}"')
@@ -90,11 +90,11 @@ def parse_to_pyobj(text: str, qpath: Optional[QueryPath]) -> Tuple[Any, str]:
     ]
 
     # try to load the text to be parsed
-    for fmt, fn_loads in loads_methods:
+    for fmt, fn_loads in loads_methods:  # noqa: B007
         try:
             py_obj = fn_loads(text)
             break
-        except Exception:
+        except Exception:  # noqa: S112
             continue
     else:
         raise FormatError("no supported format found")
@@ -113,12 +113,12 @@ def traverse_to_bottom(py_obj: Any, keys: str) -> Tuple[Any, Union[str, int]]:
         return int(key) if isinstance(obj, list) else key
 
     # make sure the keys joined by `.`, and then split
-    _keys = keys.replace(']', '').replace('[', '.').split('.')
+    separated_keys = keys.replace(']', '').replace('[', '.').split('.')
 
-    for k in _keys[:-1]:
+    for k in separated_keys[:-1]:
         py_obj = py_obj[key_or_idx(py_obj, k)]
 
-    return py_obj, key_or_idx(py_obj, _keys[-1])
+    return py_obj, key_or_idx(py_obj, separated_keys[-1])
 
 
 def modify_pyobj(py_obj: Any, sets: List[str], pops: List[str]):
@@ -131,7 +131,7 @@ def modify_pyobj(py_obj: Any, sets: List[str], pops: List[str]):
                 bottom.append(utils.safe_eval(value))
             else:
                 bottom[last_k] = utils.safe_eval(value)  # type: ignore
-        except (IndexError, KeyError, ValueError, TypeError):
+        except (IndexError, KeyError, ValueError, TypeError):  # noqa: PERF203
             utils.print_err(f'invalid key path: {kv}')
             continue
 
@@ -139,7 +139,7 @@ def modify_pyobj(py_obj: Any, sets: List[str], pops: List[str]):
         try:
             bottom, last_k = traverse_to_bottom(py_obj, keys)
             bottom.pop(last_k)
-        except (IndexError, KeyError):
+        except (IndexError, KeyError):  # noqa: PERF203
             utils.print_err(f'invalid key path: {keys}')
             continue
 
@@ -162,6 +162,26 @@ def get_overview(py_obj: Any) -> Any:
         return clip(py_obj)
 
 
+def merge_objs(base: list | dict, *datas) -> list | dict:
+    '''merge the datas to base'''
+    if isinstance(base, list):
+        for data in datas:
+            if isinstance(data, list):
+                base.extend(data)
+            else:
+                base.append(data)
+        return base
+    elif isinstance(base, dict):
+        for data in datas:
+            if isinstance(data, dict):
+                base.update(data)
+            else:
+                print(f'invalid data: {data}')
+        return base
+    else:
+        raise FormatError('the base must be a list or dict')
+
+
 def format_to_text(py_obj: Any, fmt: str, *,
                    compact: bool, escape: bool,
                    indent: str, sort_keys: bool) -> str:
@@ -181,8 +201,8 @@ def format_to_text(py_obj: Any, fmt: str, *,
     elif fmt == 'xml':
         result = xml2py.dumps(py_obj, indent, compact, sort_keys)
     elif fmt == 'yaml':
-        _indent = None if indent == 't' else int(indent)
-        result = yaml.safe_dump(py_obj, allow_unicode=not escape, indent=_indent,
+        y_indent = None if indent == 't' else int(indent)
+        result = yaml.safe_dump(py_obj, allow_unicode=not escape, indent=y_indent,
                                 sort_keys=sort_keys)
     else:
         raise FormatError('Unknow format')
@@ -209,9 +229,9 @@ def output(output_fp: IO, text: str, fmt: str):
     if hasattr(output_fp, 'name') and output_fp.name == '<stdout>':
         if output_fp.isatty():
             # highlight the text when output to TTY divice
-            Lexer = {'json': JsonLexer, 'toml': TOMLLexer,
-                     'xml': XmlLexer, 'yaml': YamlLexer}[fmt]
-            colored_text = highlight(text, Lexer(), TerminalFormatter())
+            lexer_cls = {'json': JsonLexer, 'toml': TOMLLexer,
+                         'xml': XmlLexer, 'yaml': YamlLexer}[fmt]
+            colored_text = highlight(text, lexer_cls(), TerminalFormatter())
             win_w, win_h = get_terminal_size()
             # use pager when line-hight > screen hight or
             if text.count('\n') >= win_h or len(text) > win_w * (win_h - 1):
@@ -235,12 +255,42 @@ def output(output_fp: IO, text: str, fmt: str):
     output_fp.flush()
 
 
-def process(input_fp: IO, qpath: Optional[QueryPath], to_fmt: Optional[str], *,
+def process(input_text: str, qpath: Optional[QueryPath], to_fmt: Optional[str], *,
             compact: bool, escape: bool, indent: str, overview: bool,
             sort_keys: bool, sets: Optional[list], pops: Optional[list]):
     # parse and format
-    input_text = input_fp.read()
     py_obj, fmt = parse_to_pyobj(input_text, qpath)
+
+    if sets or pops:
+        modify_pyobj(py_obj, sets, pops)  # type: ignore
+
+    if overview:
+        py_obj = get_overview(py_obj)
+
+    to_fmt = to_fmt or fmt
+    formated_text = format_to_text(py_obj, to_fmt,
+                                   compact=compact, escape=escape,
+                                   indent=indent, sort_keys=sort_keys)
+    return formated_text, to_fmt
+
+
+def merge_files(files: list[str], qpath: Optional[QueryPath], to_fmt: Optional[str], *,
+                compact: bool, escape: bool, indent: str, overview: bool,
+                sort_keys: bool, sets: Optional[list], pops: Optional[list]):
+    '''merge the files to base_file'''
+    objs = []
+    fmt = 'json'
+    for idx, file in enumerate(files):
+        with open(file) as fp:
+            if idx == 0:
+                obj, fmt = parse_to_pyobj(fp.read(), None)
+            else:
+                obj = parse_to_pyobj(fp.read(), None)[0]
+            objs.append(obj)
+    py_obj = merge_objs(objs[0], *objs[1:])
+
+    if qpath is not None:
+        py_obj = extract_elements(qpath, py_obj)
 
     if sets or pops:
         modify_pyobj(py_obj, sets, pops)  # type: ignore
@@ -269,6 +319,8 @@ def parse_cmdline_args() -> ArgumentParser:
                       help='OverviewMode, which can display an overview of the structure of the data')
     mode.add_argument('-O', dest='overwrite', action='store_true',
                       help='OverwriteMode, which will overwrite the original file with the formated text')
+    parser.add_argument('-m', dest='merge', action='store_true',
+                      help='MergeMode, merge the input data from the second one into the first one')
 
     parser.add_argument('-c', dest='compact', action='store_true',
                         help='Suppress all whitespace separation (most compact), only valid for JSON')
@@ -296,7 +348,7 @@ def parse_cmdline_args() -> ArgumentParser:
     return parser
 
 
-def main():
+def main():  # noqa: C901
     parser = parse_cmdline_args()
     args = parser.parse_args()
 
@@ -312,7 +364,7 @@ def main():
     n_files = len(files)
 
     # check the diff mode
-    diff_mode: bool = args.diff or args.difftool
+    diff_mode: bool = args.diff or args.difftool  # type: ignore
     if diff_mode and len(files) != 2:
         utils.exit_with_error('less than two files')
     sort_keys = True if diff_mode else args.sort_keys
@@ -323,6 +375,25 @@ def main():
 
     output_title = n_files > 1 and not (diff_mode or args.cp2clip or args.overwrite)
 
+    # merge mode
+    if args.merge:
+        files = [f for f in files if isinstance(f, str)]
+        if len(files) < 2:
+            utils.exit_with_error('less than two files')
+        try:
+            formated, fmt = merge_files(files, querypath, args.format,
+                                        compact=args.compact, escape=args.escape,
+                                        indent=args.indent, overview=args.overview,
+                                        sort_keys=sort_keys, sets=sets, pops=pops)
+        except (FormatError, JMESPathError, JSONPathError, OSError) as err:
+            utils.exit_with_error(err)
+
+        with open(files[0], 'r+') as fp:
+            output_fp = get_output_fp(fp, args.cp2clip, diff_mode,
+                                      args.overview, args.overwrite)
+            output(output_fp, formated, fmt)
+        return
+
     diff_files = []
     for idx, file in enumerate(files, start=1):
         if output_title:
@@ -332,7 +403,7 @@ def main():
         try:
             # process the input data file
             input_fp = open(file, 'r+') if isinstance(file, str) else file
-            formated, fmt = process(input_fp, querypath, args.format,
+            formated, fmt = process(input_fp.read(), querypath, args.format,
                                     compact=args.compact, escape=args.escape,
                                     indent=args.indent, overview=args.overview,
                                     sort_keys=sort_keys, sets=sets, pops=pops)
