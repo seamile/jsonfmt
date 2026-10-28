@@ -1,14 +1,15 @@
 import os
 import unittest
 from json import load as j_load
-from xml.dom.minidom import parseString
 from xml.etree.ElementTree import Element
+
+from defusedxml.common import DTDForbidden
+from defusedxml.minidom import parseString
 
 from jsonfmt.xml2py import XmlElement, dumps, loads
 
 
 class TestXmlElement(unittest.TestCase):
-
     def setUp(self) -> None:
         dirpath = os.path.dirname(__file__)
 
@@ -58,6 +59,14 @@ class TestXmlElement(unittest.TestCase):
         self.assertEqual(ele[0].attrib, {'attr': 'value'})
         self.assertEqual(ele[0].text, 'Text')
 
+    def test_reject_dtd(self):
+        for xml in (
+            '<!DOCTYPE root [<!ENTITY payload "expanded">]><root>&payload;</root>',
+            '<!DOCTYPE root SYSTEM "file:///nonexistent.dtd"><root/>',
+        ):
+            with self.subTest(xml=xml), self.assertRaises(DTDForbidden):
+                loads(xml)
+
     def test_to_xml_minimal(self):
         ele = XmlElement('root')
         ele.spawn('item', {'attr': 'value'}, 'Text')
@@ -85,8 +94,7 @@ class TestXmlElement(unittest.TestCase):
         ele = XmlElement('ele', {'attr1': '1', 'attr2': '2'}, '3')
         ele.spawn('sub_ele', {'attr3': '3'})
         attrs = ele._get_attrs()
-        self.assertEqual(attrs,
-                         {'@attr1': 1, '@attr2': 2, '@text': 3, 'sub_ele': {'@attr3': 3}})
+        self.assertEqual(attrs, {'@attr1': 1, '@attr2': 2, '@text': 3, 'sub_ele': {'@attr3': 3}})
 
     def test_from_py(self):
         obj1 = {'foo': [1, 2, 3]}
@@ -99,14 +107,7 @@ class TestXmlElement(unittest.TestCase):
 
         obj2 = [
             [1, 2, 3],
-            {
-                '@attr': 'value',
-                '@text': 'hello world',
-                'item': [
-                    {'@sub_attr': 'sub_value1'},
-                    {'name': 'space'}
-                ]
-            }
+            {'@attr': 'value', '@text': 'hello world', 'item': [{'@sub_attr': 'sub_value1'}, {'name': 'space'}]},
         ]
 
         xml = (
@@ -130,8 +131,7 @@ class TestXmlElement(unittest.TestCase):
         ele = XmlElement('root', {'attr': 'value'})
         ele.spawn('item', {'red': 'red'}, '[1,2,3]')
         py_obj = ele.to_py()
-        self.assertEqual(py_obj,
-                         {'@attr': 'value', 'item': {'@red': 'red', '@text': [1, 2, 3]}})
+        self.assertEqual(py_obj, {'@attr': 'value', 'item': {'@red': 'red', '@text': [1, 2, 3]}})
 
     def test_loads(self):
         xml = '<root><item k="v" x="y"><l>1</l><l>2</l><l>3</l></item></root>'
@@ -153,5 +153,5 @@ class TestXmlElement(unittest.TestCase):
         self.assertEqual(dumps(self.pyobj, '2'), self.xml)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

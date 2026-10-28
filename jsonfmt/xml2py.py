@@ -1,33 +1,27 @@
-import sys
-import xml.etree.ElementTree as ET
+from collections import UserList
 from collections.abc import Mapping
 from copy import deepcopy
-from xml.dom.minidom import parseString
+from typing import Any, Self
+from xml.etree.ElementTree import Element, tostring  # ruff: ignore[suspicious-xml-etree-import]
 
-from .utils import safe_eval, sort_dict
+from defusedxml.ElementTree import fromstring
+from defusedxml.minidom import parseString
 
-if sys.version_info < (3, 11):
-    from typing import Any, Dict, Optional, TypeVar, Union
-    Self = TypeVar('Self', bound='XmlElement')
-else:
-    from typing import Any, Dict, Optional, Self, Union
+from jsonfmt.utils import safe_eval, sort_dict
 
 
-class _list(list):
+class TagList(UserList):
     pass
 
 
-class XmlElement(ET.Element):
-    def __init__(self,
-                 tag: str,
-                 attrib={},
-                 text: Optional[str] = None,
-                 tail: Optional[str] = None,
-                 **extra) -> None:
+class XmlElement(Element):
+    def __init__(self, tag: str, attrib=None, text: str | None = None, tail: str | None = None, **extra) -> None:
+        if attrib is None:
+            attrib = {}
         super().__init__(tag, attrib, **extra)
         self.text = text
         self.tail = tail
-        self.parent: Optional[Self] = None
+        self.parent: Self | None = None
 
     @classmethod
     def makeelement(cls, tag, attrib, text=None, tail=None) -> Self:
@@ -35,32 +29,28 @@ class XmlElement(ET.Element):
         return cls(tag, attrib, text, tail)
 
     @classmethod
-    def clone(cls, src: Union[Self, ET.Element], dst: Optional[Self] = None) -> Self:
+    def clone(cls, src: Self | Element, dst: Self | None = None) -> Self:
         if dst is None:
             dst = cls(src.tag, src.attrib, src.text, src.tail)
 
         for child in src:
-            _child = dst.spawn(child.tag, child.attrib, child.text, child.tail)
-            cls.clone(child, _child)
+            cls.clone(child, dst.spawn(child.tag, child.attrib, child.text, child.tail))
 
         return dst
 
     @classmethod
     def from_xml(cls, xml: str) -> Self:
-        root = ET.fromstring(xml.strip())
+        root = fromstring(xml.strip(), forbid_dtd=True)
         return cls.clone(root)
 
-    def to_xml(self,
-               minimal: Optional[bool] = None,
-               indent: Optional[Union[int, str]] = 2
-               ) -> str:
+    def to_xml(self, minimal: bool | None = None, indent: int | str | None = 2) -> str:
         ele = deepcopy(self)
         for e in ele.iter():
             if len(e) > 0:
                 e.text = e.text.strip() if isinstance(e.text, str) else None
             e.tail = e.tail.strip() if isinstance(e.tail, str) else None
 
-        xml = ET.tostring(ele, 'unicode')
+        xml = tostring(ele, 'unicode')
         if minimal or indent is None:
             return xml
         else:
@@ -71,15 +61,17 @@ class XmlElement(ET.Element):
                 indent = '\t'
             return doc.toprettyxml(indent=indent)
 
-    def spawn(self, tag: str, attrib={}, text=None, tail=None, **extra) -> Self:
+    def spawn(self, tag: str, attrib=None, text=None, tail=None, **extra) -> Self:
         """Create and append a new child element to the current element."""
+        if attrib is None:
+            attrib = {}
         attrib = {**attrib, **extra}
         child = self.makeelement(tag, attrib, text, tail)
         child.parent = self
         self.append(child)
         return child
 
-    def _get_attrs(self) -> Optional[Dict[str, Any]]:
+    def _get_attrs(self) -> dict[str, Any] | None:
         attrs = {f'@{k}': safe_eval(v) for k, v in self.attrib.items()}
 
         if len(self) == 0:
@@ -96,32 +88,32 @@ class XmlElement(ET.Element):
                 if value:
                     attrs['@text'] = value
 
-            _tags = []  # tags of type "_list"
+            tags = []  # tags of type "TagList"
             for child in self:
                 child_attrs = child._get_attrs()  # type: ignore
                 if child.tag in attrs:
                     # Make a list for duplicate tags
                     previous = attrs[child.tag]
-                    if not isinstance(previous, _list):
-                        attrs[child.tag] = _list([previous, child_attrs])
-                        _tags.append(child.tag)
+                    if not isinstance(previous, TagList):
+                        attrs[child.tag] = TagList([previous, child_attrs])
+                        tags.append(child.tag)
                     else:
                         previous.append(child_attrs)
                 else:
                     attrs[child.tag] = child_attrs
 
-            # recover "_list" to "list"
-            for k in _tags:
+            # recover "TagList" to "list"
+            for k in tags:
                 attrs[k] = list(attrs[k])
 
             return attrs
 
     def to_py(self) -> Any:
-        '''Convert into Python object'''
+        """Convert into Python object"""
         attrs = self._get_attrs()
         return attrs if self.tag == 'root' else {self.tag: attrs}
 
-    def _set_attrs(self, py_obj: Any):
+    def _set_attrs(self, py_obj: Any):  # ruff: ignore[complex-structure]
         if isinstance(py_obj, Mapping):
             for key, value in py_obj.items():
                 if key == '@text':
@@ -155,7 +147,7 @@ class XmlElement(ET.Element):
         if not isinstance(py_obj, dict) or len(py_obj) != 1:
             root = cls('root')
         else:
-            tag, value = list(py_obj.items())[0]
+            tag, value = next(iter(py_obj.items()))
             if isinstance(value, Mapping):
                 root = cls(tag)
                 py_obj = value
@@ -166,12 +158,11 @@ class XmlElement(ET.Element):
 
 
 def loads(xml: str) -> Any:
-    '''Load and convert an XML string into a Python object'''
+    """Load and convert an XML string into a Python object"""
     return XmlElement.from_xml(xml).to_py()
 
 
-def dumps(py_obj: Any, indent: str = 't', minimal: bool = False,
-          sort_keys: bool = False) -> str:
+def dumps(py_obj: Any, indent: str = 't', minimal: bool = False, sort_keys: bool = False) -> str:
     if sort_keys:
         py_obj = sort_dict(py_obj)
     return XmlElement.from_py(py_obj).to_xml(indent=indent, minimal=minimal)

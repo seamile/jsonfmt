@@ -5,7 +5,7 @@ from typing import Any
 
 
 def safe_eval(value: str) -> Any:
-    '''Safely evaluates the provided string expression as a Python literal'''
+    """Safely evaluates the provided string expression as a Python literal"""
     try:
         return literal_eval(value)
     except (ValueError, SyntaxError):
@@ -13,7 +13,7 @@ def safe_eval(value: str) -> Any:
 
 
 def sort_dict(py_obj: Any) -> Any:
-    '''sort the dicts in py_obj by keys'''
+    """sort the dicts in py_obj by keys"""
     if isinstance(py_obj, dict):
         sorted_items = sorted((key, sort_dict(value)) for key, value in py_obj.items())
         return OrderedDict(sorted_items)
