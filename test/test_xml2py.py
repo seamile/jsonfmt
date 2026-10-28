@@ -1,7 +1,7 @@
-import os
 import unittest
-from json import load as j_load
-from xml.etree.ElementTree import Element
+from json import loads as j_loads
+from pathlib import Path
+from xml.etree.ElementTree import Element, ParseError  # ruff: ignore[suspicious-xml-etree-import]
 
 from defusedxml.common import DTDForbidden
 from defusedxml.minidom import parseString
@@ -11,15 +11,9 @@ from jsonfmt.xml2py import XmlElement, dumps, loads
 
 class TestXmlElement(unittest.TestCase):
     def setUp(self) -> None:
-        dirpath = os.path.dirname(__file__)
-
-        jsonfile = os.path.join(dirpath, 'example.json')
-        with open(jsonfile) as j_fp:
-            self.pyobj = j_load(j_fp)
-
-        xmlfile = os.path.join(dirpath, 'example.xml')
-        with open(xmlfile) as x_fp:
-            self.xml = x_fp.read()
+        test_dir = Path(__file__).parent
+        self.pyobj = j_loads((test_dir / 'example.json').read_text())
+        self.xml = (test_dir / 'example.xml').read_text()
 
     def test_init(self):
         ele = XmlElement('test', {'attr1': 'value1'}, 'text content', 'tail text')
@@ -46,7 +40,7 @@ class TestXmlElement(unittest.TestCase):
         self.assertEqual(cloned.tag, 'src')
         self.assertEqual(cloned.attrib, {'attr': 'value'})
         self.assertEqual(cloned.text, 'text')
-        self.assertTrue(len(cloned), 1)
+        self.assertEqual(len(cloned), 1)
         self.assertEqual(cloned[0].tag, 'child')
 
     def test_from_xml(self):
@@ -65,6 +59,11 @@ class TestXmlElement(unittest.TestCase):
             '<!DOCTYPE root SYSTEM "file:///nonexistent.dtd"><root/>',
         ):
             with self.subTest(xml=xml), self.assertRaises(DTDForbidden):
+                loads(xml)
+
+    def test_reject_malformed_xml(self):
+        for xml in ('', '   ', '<root><item></root>'):
+            with self.subTest(xml=xml), self.assertRaises(ParseError):
                 loads(xml)
 
     def test_to_xml_minimal(self):
@@ -144,6 +143,7 @@ class TestXmlElement(unittest.TestCase):
         xml = dumps(obj, indent='  ', sort_keys=True)
         parsed_xml = parseString(xml)
         self.assertIsNotNone(parsed_xml.documentElement)
+        assert parsed_xml.documentElement is not None
         self.assertEqual(parsed_xml.documentElement.tagName, 'root')
         items = parsed_xml.getElementsByTagName('item')
         self.assertEqual(len(items), 2)

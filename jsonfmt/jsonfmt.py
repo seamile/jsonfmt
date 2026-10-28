@@ -3,11 +3,11 @@
 
 import io
 import json
-import os
 import sys
 from argparse import ArgumentParser
 from collections.abc import Callable
 from functools import partial
+from pathlib import Path
 from pydoc import pager
 from shutil import get_terminal_size
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
@@ -215,7 +215,7 @@ def get_output_fp(input_file: IO, cp2clip: bool, diff: bool, overview: bool, ove
     if cp2clip:
         return TEMP_CLIPBOARD
     elif diff:
-        name = f'_{os.path.basename(input_file.name)}'
+        name = f'_{Path(input_file.name).name}'
         return NamedTemporaryFile(mode='w+', prefix='jf-', suffix=name, delete=False)
     elif input_file is sys.stdin or overview:
         return sys.stdout
@@ -298,12 +298,12 @@ def merge_files(
     objs = []
     fmt = 'json'
     for idx, file in enumerate(files):
-        with open(file) as fp:
-            if idx == 0:
-                obj, fmt = parse_to_pyobj(fp.read(), None)
-            else:
-                obj = parse_to_pyobj(fp.read(), None)[0]
-            objs.append(obj)
+        text = Path(file).read_text()
+        if idx == 0:
+            obj, fmt = parse_to_pyobj(text, None)
+        else:
+            obj = parse_to_pyobj(text, None)[0]
+        objs.append(obj)
     py_obj = merge_objs(objs[0], *objs[1:])
 
     if qpath is not None:
@@ -449,7 +449,7 @@ def main():  # ruff: ignore[complex-structure]
         except (FormatError, JMESPathError, JSONPathError, OSError) as err:
             utils.exit_with_error(err)
 
-        with open(files[0], 'r+') as fp:
+        with Path(files[0]).open('r+') as fp:
             output_fp = get_output_fp(fp, args.cp2clip, diff_mode, args.overview, args.overwrite)
             output(output_fp, formated, fmt)
         return
@@ -462,7 +462,7 @@ def main():  # ruff: ignore[complex-structure]
 
         try:
             # process the input data file
-            input_fp = open(file, 'r+') if isinstance(file, str) else file
+            input_fp = Path(file).open('r+') if isinstance(file, str) else file
             formated, fmt = process(
                 input_fp.read(),
                 querypath,
@@ -482,7 +482,7 @@ def main():  # ruff: ignore[complex-structure]
             if diff_mode:
                 diff_files.append(output_fp.name)
             elif args.overwrite:
-                utils.print_inf(f'result written to {os.path.basename(output_fp.name)}')
+                utils.print_inf(f'result written to {Path(output_fp.name).name}')
 
         except (FormatError, JMESPathError, JSONPathError, OSError) as err:
             utils.print_err(err)

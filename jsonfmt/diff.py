@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from shutil import which
 from subprocess import PIPE, STDOUT, call, run
 
@@ -21,8 +22,8 @@ def cmp_by_diff(path1: str, path2: str):
 
 def cmp_by_fc(path1: str, path2: str):
     """use fc to compare the difference between two files"""
-    fc = os.path.join(os.environ['WINDIR'], 'system32', 'fc.exe')
-    call([fc, '/n', path1, path2])
+    fc = Path(os.environ['WINDIR']) / 'system32' / 'fc.exe'
+    call([str(fc), '/n', path1, path2])
 
 
 def cmp_by_code(path1: str, path2: str):

@@ -1,40 +1,39 @@
 import json
-import os
 import sys
 import tempfile
 import unittest
 from argparse import Namespace
-from contextlib import contextmanager
 from copy import deepcopy
 from functools import partial
 from io import StringIO
+from pathlib import Path
 from unittest.mock import patch
 
 from jmespath import compile as jcompile
-from jsonpath_ng import parse as jparse
+from jsonpath_ng.parser import parse as jparse
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer, TOMLLexer, XmlLexer, YamlLexer
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, BASE_DIR)
-from jsonfmt import jsonfmt  # noqa: E402 -- Add the repository to sys.path before importing.
+BASE_DIR = Path(__file__).resolve().parent.parent
+TEST_DIR = BASE_DIR / 'test'
+sys.path.insert(0, str(BASE_DIR))
 
-JSON_FILE = f'{BASE_DIR}/test/example.json'
-with open(JSON_FILE) as json_fp:
-    JSON_TEXT = json_fp.read()
+from jsonfmt import jsonfmt
 
-TOML_FILE = f'{BASE_DIR}/test/example.toml'
-with open(TOML_FILE) as toml_fp:
-    TOML_TEXT = toml_fp.read()
+JSON_FILE = str(TEST_DIR / 'example.json')
+JSON_TEXT = Path(JSON_FILE).read_text()
 
-XML_FILE = f'{BASE_DIR}/test/example.xml'
-with open(XML_FILE) as xml_fp:
-    XML_TEXT = xml_fp.read()
+TOML_FILE = str(TEST_DIR / 'example.toml')
+TOML_TEXT = Path(TOML_FILE).read_text()
 
-YAML_FILE = f'{BASE_DIR}/test/example.yaml'
-with open(YAML_FILE) as yaml_fp:
-    YAML_TEXT = yaml_fp.read()
+XML_FILE = str(TEST_DIR / 'example.xml')
+XML_TEXT = Path(XML_FILE).read_text()
+
+YAML_FILE = str(TEST_DIR / 'example.yaml')
+LIST_A_FILE = str(TEST_DIR / 'list_a.json')
+LIST_B_FILE = str(TEST_DIR / 'list_b.json')
+YAML_TEXT = Path(YAML_FILE).read_text()
 
 
 def color(text, fmt):
@@ -90,13 +89,8 @@ class JSONFormatToolTestCase(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
         self.py_obj = json.loads(JSON_TEXT)
-
-    @contextmanager
-    def assertNotRaises(self, exc_type):
-        try:
-            yield None
-        except exc_type:
-            raise self.failureException('{} raised'.format(exc_type.__name__))
+        jsonfmt.TEMP_CLIPBOARD.seek(0)
+        jsonfmt.TEMP_CLIPBOARD.truncate()
 
     def test_is_clipboard_available(self):
         available = jsonfmt.is_clipboard_available()
@@ -153,8 +147,8 @@ class JSONFormatToolTestCase(unittest.TestCase):
         self.assertEqual(matched_obj, (None, 'yaml'))
 
     def test_parse_to_pyobj_with_wrong_fmt(self):
-        with self.assertRaises(jsonfmt.FormatError), open(__file__) as fp:
-            jsonfmt.parse_to_pyobj(fp.read(), jcompile('actions[0].calorie'))
+        with self.assertRaises(jsonfmt.FormatError):
+            jsonfmt.parse_to_pyobj(Path(__file__).read_text(), jcompile('actions[0].calorie'))
 
     def test_modify_pyobj_for_adding(self):
         # test empty sets and pops
@@ -230,7 +224,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
             'actions': [],
             'age': 23,
             'gender': '...',
-            'money': 3.1415926,
+            'money': 3.1415926,  # ruff: ignore[math-constant]
             'name': '...',
             'dict': {'a': 7758, 'b': []},
         }
@@ -242,6 +236,43 @@ class JSONFormatToolTestCase(unittest.TestCase):
         expected_2 = [{'name': '...', 'calorie': 1294.9, 'date': '...'}]
         overview = jsonfmt.get_overview(obj)
         self.assertEqual(overview, expected_2)
+
+    def test_merge_objs(self):
+        values = [1]
+        self.assertIs(jsonfmt.merge_objs(values, [2], 3), values)
+        self.assertEqual(values, [1, 2, 3])
+
+        obj = {'a': 1}
+        with patch('sys.stdout', StdOut()):
+            self.assertIs(jsonfmt.merge_objs(obj, {'b': 2}, 3), obj)
+            self.assertEqual(sys.stdout.read(), 'invalid data: 3\n')
+        self.assertEqual(obj, {'a': 1, 'b': 2})
+
+        with self.assertRaises(jsonfmt.FormatError):
+            jsonfmt.merge_objs('invalid')  # pyright: ignore[reportArgumentType]
+
+    def test_merge_files_with_query_and_modification(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            first = Path(tmpdir, 'first.json')
+            second = Path(tmpdir, 'second.json')
+            first.write_text('{"selected":{"remove":1},"first":1}', encoding='utf-8')
+            second.write_text('{"second":2}', encoding='utf-8')
+
+            formatted, fmt = jsonfmt.merge_files(
+                [str(first), str(second)],
+                jcompile('selected'),
+                None,
+                compact=False,
+                escape=False,
+                indent='2',
+                overview=True,
+                sort_keys=True,
+                sets=['new=3'],
+                pops=['remove'],
+            )
+
+        self.assertEqual(fmt, 'json')
+        self.assertEqual(json.loads(formatted), {'new': 3})
 
     def test_format_to_text(self):
         py_obj = {'name': '约翰', 'age': 30}
@@ -300,6 +331,14 @@ class JSONFormatToolTestCase(unittest.TestCase):
         # output unknow format
         with self.assertRaises(KeyError), patch('sys.stdout', StdOut()):
             jsonfmt.output(sys.stdout, YAML_TEXT, 'null')
+
+    @patch('jsonfmt.jsonfmt.get_terminal_size', return_value=(20, 2))
+    @patch('jsonfmt.jsonfmt.pager')
+    def test_output_uses_pager_for_long_terminal_text(self, pager, get_terminal_size):
+        with patch('sys.stdout', StdOut()):
+            jsonfmt.output(sys.stdout, 'line one\nline two\n', 'json')
+        pager.assert_called_once()
+        get_terminal_size.assert_called_once_with()
 
     def test_parse_cmdline_args(self):
         # test default parameters
@@ -398,7 +437,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
         with patch.multiple(sys, argv=['jf', 'not_exist_file.json', __file__]):
             jsonfmt.main()
             errmsg = sys.stderr.read()
-            self.assertIn("No such file or directory: 'not_exist_file.json'", errmsg)
+            self.assertIn('not_exist_file.json', errmsg)
             self.assertIn('no supported format found', errmsg)
 
         with (
@@ -449,16 +488,14 @@ class JSONFormatToolTestCase(unittest.TestCase):
         jsonfmt.main()
         self.assertEqual(sys.stdout.read().strip(), '{"a":"...","b":[]}')
 
-    @patch('sys.argv', ['jf', '-Ocf', 'json', TOML_FILE])
+    @patch('sys.stderr', StdErr())
     def test_main_overwrite_to_original_file(self):
-        try:
-            jsonfmt.main()
-            with open(TOML_FILE) as toml_fp:
-                new_content = toml_fp.read().strip()
-            self.assertEqual(new_content, JSON_TEXT.strip())
-        finally:
-            with open(TOML_FILE, 'w') as toml_fp:
-                toml_fp.write(TOML_TEXT)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = Path(tmpdir, 'example.toml')
+            target.write_text(TOML_TEXT, encoding='utf-8')
+            with patch('sys.argv', ['jf', '-Ocf', 'json', str(target)]):
+                jsonfmt.main()
+            self.assertEqual(target.read_text(encoding='utf-8').strip(), JSON_TEXT.strip())
 
     @patch.multiple(sys, argv=['jf', '-Cc', JSON_FILE, TOML_FILE])
     def test_main_copy_to_clipboard(self):
@@ -480,31 +517,63 @@ class JSONFormatToolTestCase(unittest.TestCase):
     @patch.multiple(sys, argv=['jf', '--set', 'age=32; box=[1,2,3]', '--pop', 'money; actions.1'])
     @patch.multiple(sys, stdin=StdIn(JSON_TEXT), stdout=StdOut(tty=False))
     def test_main_modify_and_pop(self):
-        try:
+        jsonfmt.main()
+        py_obj = json.loads(sys.stdout.read())
+        self.assertEqual(py_obj['age'], 32)
+        self.assertEqual(py_obj['box'], [1, 2, 3])
+        self.assertNotIn('money', py_obj)
+        self.assertEqual(len(py_obj['actions']), 2)
+
+    @patch.multiple(sys, stdout=StdOut(tty=False), stderr=StdErr())
+    def test_main_merge(self):
+        with patch.multiple(sys, argv=['jf', '-m', LIST_A_FILE, LIST_B_FILE]):
             jsonfmt.main()
-            py_obj = json.loads(sys.stdout.read())
-            self.assertEqual(py_obj['age'], 32)
-            self.assertEqual(py_obj['box'], [1, 2, 3])
-            self.assertNotIn('money', py_obj)
-            self.assertEqual(len(py_obj['actions']), 2)
-        finally:
-            with open(JSON_FILE, 'w') as fp:
-                fp.write(JSON_TEXT)
+            self.assertEqual(len(json.loads(sys.stdout.read())), 5)
+
+        with patch.multiple(sys, argv=['jf', '-m', LIST_A_FILE]), self.assertRaises(SystemExit):
+            jsonfmt.main()
+        self.assertIn('less than two files', sys.stderr.read())
+
+        with patch.multiple(sys, argv=['jf', '-m', 'missing-a.json', 'missing-b.json']), self.assertRaises(SystemExit):
+            jsonfmt.main()
+        self.assertIn('missing-a.json', sys.stderr.read())
 
     @patch.multiple(sys, stdout=StdOut(), stderr=StdErr())
     def test_main_diff_mode(self):
-        # right way
-        with patch.multiple(sys, argv=['jf', '-D', 'diff', JSON_FILE, XML_FILE]), self.assertNotRaises(SystemExit):
-            jsonfmt.main()
+        left = right = None
+        with patch('jsonfmt.jsonfmt.compare') as compare:
+            try:
+                with patch.multiple(sys, argv=['jf', '-D', 'diff', JSON_FILE, XML_FILE]):
+                    jsonfmt.main()
+
+                compare.assert_called_once()
+                left, right, difftool = compare.call_args.args
+                self.assertEqual(difftool, 'diff')
+                self.assertNotEqual(left, right)
+            finally:
+                for path in (left, right):
+                    if path is not None:
+                        Path(path).unlink(missing_ok=True)
 
         # wrong args
         with patch.multiple(sys, argv=['jf', '-D', 'diff', XML_FILE]), self.assertRaises(SystemExit):
             jsonfmt.main()
         self.assertIn('less than two files', sys.stderr.read())
 
-        with patch.multiple(sys, argv=['jf', '-D', 'nothing', XML_FILE, TOML_FILE]), self.assertRaises(SystemExit):
-            jsonfmt.main()
-        self.assertIn("No such file or directory: 'nothing'", sys.stderr.read())
+        left = right = None
+        with patch('jsonfmt.jsonfmt.compare', side_effect=ValueError('invalid difftool')) as compare:
+            try:
+                with (
+                    patch.multiple(sys, argv=['jf', '-D', 'nothing', XML_FILE, TOML_FILE]),
+                    self.assertRaises(SystemExit),
+                ):
+                    jsonfmt.main()
+                left, right = compare.call_args.args[:2]
+            finally:
+                for path in (left, right):
+                    if path is not None:
+                        Path(path).unlink(missing_ok=True)
+        self.assertIn('invalid difftool', sys.stderr.read())
 
 
 if __name__ == '__main__':

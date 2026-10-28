@@ -1,8 +1,10 @@
 import sys
+import tempfile
 import unittest
-from unittest import mock
 from collections import OrderedDict
 from io import StringIO
+from pathlib import Path
+from unittest import mock
 
 from jsonfmt.utils import exit_with_error, print_inf, safe_eval, sort_dict
 
@@ -13,6 +15,13 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(safe_eval('[1, 2, 3]'), [1, 2, 3])
         self.assertEqual(safe_eval("'hello'"), 'hello')
         self.assertEqual(safe_eval('invalid_syntax'), 'invalid_syntax')
+
+    def test_safe_eval_does_not_execute_code(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = Path(tmpdir, 'executed')
+            payload = f"__import__('pathlib').Path({str(target)!r}).write_text('executed')"
+            self.assertEqual(safe_eval(payload), payload)
+            self.assertFalse(target.exists())
 
     def test_sort_dict(self):
         self.assertEqual(sort_dict({'c': 3, 'a': 1, 'b': 2}), OrderedDict([('a', 1), ('b', 2), ('c', 3)]))
