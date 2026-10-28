@@ -480,6 +480,7 @@ def main():  # ruff: ignore[complex-structure]
             output(output_fp, formated, fmt)
 
             if diff_mode:
+                output_fp.close()
                 diff_files.append(output_fp.name)
             elif args.overwrite:
                 utils.print_inf(f'result written to {Path(output_fp.name).name}')

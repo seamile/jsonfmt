@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
-from jsonfmt import diff as df  # noqa: E402 -- Add the repository to sys.path before importing.
+from jsonfmt import diff as df
 
 
 class TestDiff(unittest.TestCase):
@@ -56,9 +56,14 @@ class TestDiff(unittest.TestCase):
         self.mock_run.return_value = Mock(returncode=1, stdout='')
         with patch.multiple(df, call=self.mock_call, run=self.mock_run):
             df.cmp_by_git('file1.txt', 'file2.txt')
-        self.mock_call.assert_called_once_with(
-            ['git', 'diff', '--color=always', '--no-index', 'file1.txt', 'file2.txt']
-        )
+        self.mock_call.assert_called_once_with([
+            'git',
+            'diff',
+            '--color=always',
+            '--no-index',
+            'file1.txt',
+            'file2.txt',
+        ])
 
     def test_cmp_by_others(self):
         with patch.multiple(df, call=self.mock_call):

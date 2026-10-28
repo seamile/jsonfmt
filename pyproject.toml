@@ -64,7 +64,32 @@ target-version = "py311"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F"]
+preview = true
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+select = ["A", "B", "C4", "C90", "E", "F", "FURB", "I", "N", "PERF", "RUF", "S", "UP", "W"]
+ignore = [
+    "ambiguous-unicode-character-comment",
+    "ambiguous-unicode-character-docstring",
+    "ambiguous-unicode-character-string",
+    "assert",
+    "function-call-in-default-argument",
+    "hardcoded-sql-expression",
+    "lambda-assignment",
+    "line-too-long",
+    "module-import-not-at-top-of-file",
+    "start-process-with-partial-path",
+    "subprocess-popen-with-shell-equals-true",
+    "subprocess-without-shell-equals-true",
+    "suspicious-non-cryptographic-random-usage",
+    "suspicious-pickle-import",
+    "suspicious-pickle-usage",
+    "suspicious-subprocess-import",
+    "unused-async",
+    "zip-without-explicit-strict",
+]
 
 [tool.ruff.format]
+preview = true
 quote-style = "single"
+line-ending = "lf"
+docstring-code-format = true
