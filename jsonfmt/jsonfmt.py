@@ -446,7 +446,7 @@ def main():  # ruff: ignore[complex-structure]
                 sets=sets,
                 pops=pops,
             )
-        except (FormatError, JMESPathError, JSONPathError, OSError) as err:
+        except (FormatError, JMESPathError, JSONPathError, OSError, UnicodeDecodeError) as err:
             utils.exit_with_error(err)
 
         with Path(files[0]).open('r+') as fp:
@@ -485,7 +485,7 @@ def main():  # ruff: ignore[complex-structure]
             elif args.overwrite:
                 utils.print_inf(f'result written to {Path(output_fp.name).name}')
 
-        except (FormatError, JMESPathError, JSONPathError, OSError) as err:
+        except (FormatError, JMESPathError, JSONPathError, OSError, UnicodeDecodeError) as err:
             utils.print_err(err)
         except KeyboardInterrupt:
             utils.exit_with_error('user canceled')
