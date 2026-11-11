@@ -18,21 +18,17 @@ class UndecodableInputTestCase(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.bad_file = str(Path(self.tmp.name) / 'bad.json')
-        with open(self.bad_file, 'wb') as fp:
-            fp.write(b'{"k": "\x81"}')
+        Path(self.bad_file).write_bytes(b'{"k": "\x81"}')
 
     def test_undecodable_file_no_traceback(self):
         err = StringIO()
-        with patch.multiple(
-            sys, argv=['jf', self.bad_file], stdout=StringIO(), stderr=err
-        ):
-            jsonfmt.main()  # must not raise
+        with patch.multiple(sys, argv=['jf', self.bad_file], stdout=StringIO(), stderr=err):
+            jsonfmt.main()
         self.assertIn('codec', err.getvalue().lower())
 
     def test_undecodable_file_merge_mode(self):
         good_file = str(Path(self.tmp.name) / 'good.json')
-        with open(good_file, 'w', encoding='utf-8') as fp:
-            fp.write('{"a": 1}')
+        Path(good_file).write_text('{"a": 1}', encoding='utf-8')
         err = StringIO()
         with (
             patch.multiple(
