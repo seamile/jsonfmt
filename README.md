@@ -826,4 +826,5 @@ $ jf -s -i 4 --set 'name=Alex' -O test/example.json
 
 - [ ] Add URL support to directly compare data from two APIs
 - [ ] Add INI format support
-- [ ] Add merge mode to combine multiple JSON or other formatted data into one
+- [ ] Add JSONC and JSONL format support
+- [ ] Add BSON and JSONB file read/write support

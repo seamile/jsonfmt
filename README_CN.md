@@ -833,4 +833,5 @@ $ jf -s -i 4 --set 'name=Alex' -O test/example.json
 
 - [ ] 增加 URL 支持，可以直接对比来自两个 API 的数据
 - [ ] 增加 INI 格式支持
-- [ ] 增加 merge 模式，将多个 JSON 或其他格式的数据按 key 进行合并
+- [ ] 增加 jsonc、jsonl 格式支持
+- [ ] 增加 bson、jsonb 文件的读写支持
