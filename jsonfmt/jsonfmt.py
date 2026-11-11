@@ -334,13 +334,7 @@ def parse_cmdline_args() -> ArgumentParser:
         '-d',
         dest='diff',
         action='store_true',
-        help='DiffMode, which compares the difference between the two input data',
-    )
-    mode.add_argument(
-        '-D',
-        dest='difftool',
-        type=str,
-        help='DifftoolMode, similar to "DiffMode". You can specify a tool to perform diff comparisons',
+        help='DiffMode, which compares the difference between the two input data (see also --difftool)',
     )
     mode.add_argument(
         '-o',
@@ -396,6 +390,13 @@ def parse_cmdline_args() -> ArgumentParser:
         '--set', metavar="'foo.k1=v1;k2[i]=v2'", help='key-value pairs to add or modify (seperated by `;`)'
     )
     parser.add_argument('--pop', metavar="'k1;foo.k2;k3[i]'", help='key-value pairs to delete (seperated by `;`)')
+    parser.add_argument(
+        '--difftool',
+        dest='difftool',
+        metavar='DIFFTOOL',
+        type=str,
+        help='the tool used by DiffMode (default: auto-detect), only valid with -d',
+    )
     parser.add_argument(dest='files', nargs='*', help='the files that will be processed')
     parser.add_argument('-v', '--version', action='version', version=__version__, help='show the version')
     return parser
@@ -417,7 +418,9 @@ def main():  # ruff: ignore[complex-structure]
     n_files = len(files)
 
     # check the diff mode
-    diff_mode: bool = args.diff or args.difftool  # type: ignore
+    diff_mode: bool = args.diff
+    if args.difftool and not diff_mode:
+        utils.exit_with_error('--difftool requires -d')
     if diff_mode and len(files) != 2:
         utils.exit_with_error('less than two files')
     sort_keys = True if diff_mode else args.sort_keys

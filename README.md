@@ -73,8 +73,7 @@ $ pip install jsonfmt
 
 - `-h`: Show this help documentation and exit.
 - `-C`: CopyMode, which will copy the processing result to the clipboard.
-- `-d`: DiffMode, which compares the difference between the two input data.
-- `-D DIFFTOOL`: DifftoolMode, similar to "DiffMode". You can specify a tool to perform diff comparisons.
+- `-d`: DiffMode, which compares the difference between the two input data. Use with `--difftool` to specify the diff-tool.
 - `-o`: OverviewMode, which can display an overview of the structure of the data, helping to quickly understand larger data.
 - `-O`: OverwriteMode, which will overwrite the original file with the formated text.
 - `-c`: Suppress all whitespace separation (most compact), only valid for JSON.
@@ -86,6 +85,7 @@ $ pip install jsonfmt
 - `-s`: Sort the output of dictionaries alphabetically by key.
 - `--set 'foo.k1=v1;k2[i]=v2'`: Key-value pairs to add or modify (separated by ";").
 - `--pop 'k1;foo.k2;k3[i]'`: Key-value pairs to delete (separated by ";").
+- `--difftool DIFFTOOL`: The diff-tool used by DiffMode (default: auto-detect), only valid with `-d`.
 - `-v`: Show the version.
 
 
@@ -471,7 +471,7 @@ Output:
 
 In development, we often need to compare differences between some data or configurations. For example, compare the return results of an API when passing in different parameters, or compare the differences between system configuration files in different formats by operations personnel.
 
-jsonfmt supports various diff-tools by default, such as `diff`, `vimdiff`, `git`, `code`, `kdiff3`, `meld`, and also supports `WinMerge` and `fc` on Windows, and other tools can also be supported through the `-D` option.
+jsonfmt supports various diff-tools by default, such as `diff`, `vimdiff`, `git`, `code`, `kdiff3`, `meld`, and also supports `WinMerge` and `fc` on Windows, and other tools can also be supported through the `--difftool` option.
 
 By default, jsonfmt will first check if git is installed on the computer. If git is available, jsonfmt will call `git config --global diff.tool` to read the configured diff-tool. If it's not set, it will use the default diff-tool of git for processing. If git is not available, it will search in the order of `code`, `kdiff3`, `meld`, `vimdiff`, `diff`, `WinMerge`, `fc`. If no available diff-tool is found, jsonfmt will exit with an error.
 
@@ -515,12 +515,12 @@ Output:
  }
 ```
 
-#### Example 2: Specify diff-tool with `-D`
+#### Example 2: Specify diff-tool with `--difftool`
 
-The `-D DIFFTOOL` option can specify a diff comparison tool. As long as its command format matches `command [options] file1 file2`, it doesn't matter whether it's in jsonfmt's default supported tool list or not.
+The `--difftool DIFFTOOL` option (used together with `-d`) can specify a diff comparison tool. As long as its command format matches `command [options] file1 file2`, it doesn't matter whether it's in jsonfmt's default supported tool list or not.
 
 ```shell
-$ jf -D sdiff test/example.json test/another.json
+$ jf -d --difftool sdiff test/example.json test/another.json
 ```
 
 Output:
@@ -553,10 +553,10 @@ Output:
 
 #### Example 3: Specify options for the selected tool
 
-If you need to pass parameters to the diff-tool, you can use `-D 'DIFFTOOL OPTIONS'`.
+If you need to pass parameters to the diff-tool, you can use `--difftool 'DIFFTOOL OPTIONS'`.
 
 ```shell
-$ jf -D 'diff --ignore-case --color=always' test/example.json test/another.json
+$ jf -d --difftool 'diff --ignore-case --color=always' test/example.json test/another.json
 ```
 
 Output:

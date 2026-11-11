@@ -73,8 +73,7 @@ $ pip install jsonfmt
 
 - `-h`: 显示帮助文档。
 - `-C`: 复制模式，此模式会将处理结果复制到剪贴板。
-- `-d`: 对比模式. 此模式可以对传入的两个数据进行差异对比。
-- `-D DIFFTOOL`: 与“对比模式”类似。你可以指定一个工具来进行差异对比。
+- `-d`: 对比模式. 此模式可以对传入的两个数据进行差异对比。可配合 `--difftool` 指定对比工具。
 - `-o`: 概览模式，可以显示数据结构的概览，可以用来快速了解较大的数据。
 - `-O`: 覆盖模式，会将处理后的内容覆盖到原文件。
 - `-c`: 删除 JSON 中的所有空白字符（对其他数据格式无效）
@@ -86,6 +85,7 @@ $ pip install jsonfmt
 - `-s`: 按键的字母顺序对数据中的字典进行排序
 - `--set 'foo.k1=v1;k2[i]=v2'`: 要添加或修改的键值对（多个值用“;”分隔）
 - `--pop 'k1;foo.k2;k3[i]'`: 通过键指定要删除的键值对（多个值用“;”分隔）
+- `--difftool DIFFTOOL`: 对比模式使用的差异对比工具（默认：自动选择），需与 `-d` 一起使用
 - `-v`: 显示版本号
 
 
@@ -472,7 +472,7 @@ $ jf test/example.toml -f xml
 
 在开发中，我们经常需要对一些数据或者配置进行差异对比。比如对比某个 API 在传入不同参数时的返回结果，或者运维人员对比某个系统不同格式的配置文件之间的差异。
 
-jsonfmt 默认支持多种差异对比工具，如：`diff`、`vimdiff`、`git`、`code`、`kdiff3`、`meld`，也支持 Windows 上的 `WinMerge` 和 `fc`，还可以通过 `-D` 选项来支持其他工具。
+jsonfmt 默认支持多种差异对比工具，如：`diff`、`vimdiff`、`git`、`code`、`kdiff3`、`meld`，也支持 Windows 上的 `WinMerge` 和 `fc`，还可以通过 `--difftool` 选项来支持其他工具。
 
 默认情况下，jsonfmt 会首先检查电脑上是否安装了 git。如果 git 可用，jsonfmt 会调用 `git config --global diff.tool` 读取其配置的对比工具。如果未设置该项则使用 git 默认的差异对比工具进行处理。如果电脑上没有安装 git，则会按照 `code`、`kdiff3`、`meld`、`vimdiff`、`diff`、`WinMerge`、`fc` 的顺序进行查找。如果没有找到可用的差异对比工具，jsonfmt 会报错退出。
 
@@ -516,12 +516,12 @@ $ jf -d test/example.json test/another.json
  }
 ```
 
-#### 例2. 通过 `-D` 选定对比工具
+#### 例2. 通过 `--difftool` 选定对比工具
 
-`-D DIFFTOOL` 选项可以指定一款差异对比工具。只要其命令格式满足 `command [options] file1 file2` 即可，无论它是否在 jsonfmt 默认支持的工具列表中。
+`--difftool DIFFTOOL` 选项（需与 `-d` 一起使用）可以指定一款差异对比工具。只要其命令格式满足 `command [options] file1 file2` 即可，无论它是否在 jsonfmt 默认支持的工具列表中。
 
 ```shell
-$ jf -D sdiff test/example.json test/another.json
+$ jf -d --difftool sdiff test/example.json test/another.json
 ```
 
 输出：
@@ -554,10 +554,10 @@ $ jf -D sdiff test/example.json test/another.json
 
 #### 例3. 为选定的工具指定参数
 
-如果需要向差异对比工具传递参数，可以使用 `-D 'DIFFTOOL OPTIONS'` 来操作。
+如果需要向差异对比工具传递参数，可以使用 `--difftool 'DIFFTOOL OPTIONS'` 来操作。
 
 ```shell
-$ jf -D 'diff --ignore-case --color=always' test/example.json test/another.json
+$ jf -d --difftool 'diff --ignore-case --color=always' test/example.json test/another.json
 ```
 
 输出：

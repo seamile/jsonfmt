@@ -369,7 +369,7 @@ class JSONFormatToolTestCase(unittest.TestCase):
         expected_args = Namespace(
             cp2clip=False,
             diff=True,
-            difftool=None,
+            difftool='diff',
             merge=False,
             overview=False,
             overwrite=False,
@@ -404,6 +404,8 @@ class JSONFormatToolTestCase(unittest.TestCase):
                 'a; b',
                 '--pop',
                 'c; d',
+                '--difftool',
+                'diff',
                 'file1.json',
                 'file2.json',
             ],
@@ -540,31 +542,51 @@ class JSONFormatToolTestCase(unittest.TestCase):
 
     @patch.multiple(sys, stdout=StdOut(), stderr=StdErr())
     def test_main_diff_mode(self):
-        left = right = None
-        with patch('jsonfmt.jsonfmt.compare') as compare:
-            try:
-                with patch.multiple(sys, argv=['jf', '-D', 'diff', JSON_FILE, XML_FILE]):
-                    jsonfmt.main()
+        # -d alone: auto-detect the difftool; -d --difftool: use the given one
+        for argv, expected_tool in (
+            (['jf', '-d', JSON_FILE, XML_FILE], None),
+            (['jf', '-d', '--difftool', 'diff', JSON_FILE, XML_FILE], 'diff'),
+        ):
+            left = right = None
+            with self.subTest(argv=argv), patch('jsonfmt.jsonfmt.compare') as compare:
+                try:
+                    with patch.multiple(sys, argv=argv):
+                        jsonfmt.main()
 
-                compare.assert_called_once()
-                left, right, difftool = compare.call_args.args
-                self.assertEqual(difftool, 'diff')
-                self.assertNotEqual(left, right)
-            finally:
-                for path in (left, right):
-                    if path is not None:
-                        Path(path).unlink(missing_ok=True)
+                    compare.assert_called_once()
+                    left, right, difftool = compare.call_args.args
+                    self.assertEqual(difftool, expected_tool)
+                    self.assertNotEqual(left, right)
+                finally:
+                    for path in (left, right):
+                        if path is not None:
+                            Path(path).unlink(missing_ok=True)
 
         # wrong args
-        with patch.multiple(sys, argv=['jf', '-D', 'diff', XML_FILE]), self.assertRaises(SystemExit):
+        with patch.multiple(sys, argv=['jf', '-d', '--difftool', 'diff', XML_FILE]), self.assertRaises(SystemExit):
             jsonfmt.main()
         self.assertIn('less than two files', sys.stderr.read())
+
+        # --difftool without -d
+        with (
+            patch('jsonfmt.jsonfmt.compare') as compare,
+            patch.multiple(sys, argv=['jf', '--difftool', 'diff', JSON_FILE, XML_FILE]),
+            self.assertRaises(SystemExit),
+        ):
+            jsonfmt.main()
+        compare.assert_not_called()
+        self.assertIn('--difftool requires -d', sys.stderr.read())
+
+        # the old -D option has been removed
+        with patch.multiple(sys, argv=['jf', '-D', 'diff', JSON_FILE, XML_FILE]), self.assertRaises(SystemExit):
+            jsonfmt.main()
+        sys.stderr.read()
 
         left = right = None
         with patch('jsonfmt.jsonfmt.compare', side_effect=ValueError('invalid difftool')) as compare:
             try:
                 with (
-                    patch.multiple(sys, argv=['jf', '-D', 'nothing', XML_FILE, TOML_FILE]),
+                    patch.multiple(sys, argv=['jf', '-d', '--difftool', 'nothing', XML_FILE, TOML_FILE]),
                     self.assertRaises(SystemExit),
                 ):
                     jsonfmt.main()
